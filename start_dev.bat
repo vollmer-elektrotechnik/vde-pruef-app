@@ -6,7 +6,7 @@ echo ====================================================
 echo   VDE-PRUEF-APP: LOKALER START (DEVELOPMENT)
 echo ====================================================
 
-:: 1. Prüfen, ob node_modules existieren (Installation check)
+:: 1. Prüfen, ob node_modules existieren (Installation check)-
 if not exist "node_modules\" (
     echo [INFO] node_modules nicht gefunden. Installiere Abhaengigkeiten...
     call npm install
