@@ -13,13 +13,13 @@ export default function ProtocolsPage() {
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   
   const supabase = createClient();
   const router = useRouter();
 
-  const ORG_ID = "4bab2241-2309-435c-a003-455ad4a5b1dc";
   const ADMIN_EMAIL = "julianvollmer@live.de";
 
   useEffect(() => {
@@ -29,26 +29,41 @@ export default function ProtocolsPage() {
         router.push('/login');
       } else {
         setUser(session.user);
+        await loadUserContext(session.user.id);
         setAuthLoading(false);
-        loadInitialData(session.user.id);
       }
     };
     checkUser();
   }, [supabase, router]);
 
-  async function loadInitialData(userId: string) {
+  async function loadUserContext(userId: string) {
+    try {
+      const profile = await protocolService.getProfile(userId);
+      if (profile?.organization_id) {
+        setOrgId(profile.organization_id);
+        if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
+        await loadInitialData(profile.organization_id, userId);
+      } else {
+        console.error("Benutzer hat keine zugeordnete Organisation.");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Fehler beim Laden des Benutzerkontexts:", err);
+      setLoading(false);
+    }
+  }
+
+  async function loadInitialData(organizationId: string, userId: string) {
     setLoading(true);
     try {
-      const [protoData, tempData, profileData] = await Promise.all([
-        protocolService.getAllProtocols(ORG_ID, userId),
-        protocolService.getTemplates(ORG_ID),
-        protocolService.getProfile(userId)
+      const [protoData, tempData] = await Promise.all([
+        protocolService.getAllProtocols(organizationId, userId), 
+        protocolService.getTemplates(organizationId)
       ]);
       setProtocols(protoData || []);
       setTemplates(tempData || []);
-      if (profileData?.avatar_url) setAvatarUrl(profileData.avatar_url);
     } catch (err: any) {
-      console.error("Fehler beim Laden:", err.message || err);
+      console.error("Fehler beim Laden der Listen:", err.message || err);
     } finally {
       setLoading(false);
     }
@@ -66,12 +81,12 @@ export default function ProtocolsPage() {
   }
 
   async function handleSeedTemplates() {
-    if (user?.email !== ADMIN_EMAIL) return;
+    if (user?.email !== ADMIN_EMAIL || !orgId) return;
     if (!confirm("Standard-Vorlagen jetzt laden?")) return;
     
     try {
-      await protocolService.seedDefaultTemplates(ORG_ID);
-      const tempData = await protocolService.getTemplates(ORG_ID);
+      await protocolService.seedDefaultTemplates(orgId);
+      const tempData = await protocolService.getTemplates(orgId);
       setTemplates(tempData || []);
       alert("Vorlagen geladen!");
     } catch (err) {
@@ -87,38 +102,40 @@ export default function ProtocolsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newTitle.trim() || !user) return;
+    if (!newTitle.trim() || !user || !orgId) return;
     setIsCreating(true);
     try {
       if (selectedTemplate) {
-        await protocolService.createFromTemplate(newTitle, ORG_ID, user.id, selectedTemplate);
+        await protocolService.createFromTemplate(newTitle, orgId, user.id, selectedTemplate);
       } else {
-        await protocolService.createProtocol(newTitle, ORG_ID, user.id);
+        await protocolService.createProtocol(newTitle, orgId, user.id);
       }
       setNewTitle('');
       setSelectedTemplate('');
-      await loadInitialData(user.id);
-    } catch (err) {
-      alert("Fehler beim Erstellen");
+      await loadInitialData(orgId, user.id);
+    } catch (err: any) {
+      // Zeigt die spezifische Fehlermeldung des Services an (z.B. Duplikat-Warnung)
+      alert(err.message || "Fehler beim Erstellen");
     } finally {
       setIsCreating(false);
     }
   }
 
   async function handleTogglePublic(id: string, currentStatus: boolean) {
+    if (!orgId || !user) return;
     try {
       await protocolService.togglePublicStatus(id, !currentStatus);
-      await loadInitialData(user.id);
+      await loadInitialData(orgId, user.id);
     } catch (err) {
       alert("Fehler beim Ändern");
     }
   }
 
   async function handleDelete(id: string, title: string) {
-    if (!confirm(`Protokoll "${title}" löschen?`)) return;
+    if (!confirm(`Protokoll "${title}" löschen?`) || !orgId || !user) return;
     try {
       await protocolService.deleteProtocol(id);
-      await loadInitialData(user.id);
+      await loadInitialData(orgId, user.id);
     } catch (err) {
       alert("Fehler beim Löschen");
     }
@@ -130,7 +147,6 @@ export default function ProtocolsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Sticky Header für Mobile & Desktop */}
       <header className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -166,7 +182,6 @@ export default function ProtocolsPage() {
               <button onClick={handleLogout} className="p-2 text-red-600 hover:bg-red-50 rounded-lg sm:px-4 sm:py-2 sm:text-sm sm:font-medium transition-colors">
                 Ausloggen
               </button>
-              {/* "Vorlagen laden" Button - Nur für Admin sichtbar */}
               <button 
                 onClick={handleSeedTemplates} 
                 disabled={!isAdmin}
@@ -184,7 +199,6 @@ export default function ProtocolsPage() {
       <main className="max-w-3xl mx-auto p-4 sm:p-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900 tracking-tight">Protokoll-Manager</h1>
 
-        {/* Formular - Optimiert für Touch (größere Inputs & Buttons) */}
         <section className="mb-8 p-5 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-5">
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Projekt / Kunde</label>
@@ -193,7 +207,7 @@ export default function ProtocolsPage() {
               placeholder="z.B. Müller - PV Anlage"
               className="w-full p-4 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 text-base text-gray-900 placeholder:text-gray-400 outline-none transition-all"
               value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
+              onChange={(e) => setNewTitle(newTitle => e.target.value)}
               disabled={isCreating}
             />
           </div>
@@ -226,7 +240,6 @@ export default function ProtocolsPage() {
           </button>
         </section>
 
-        {/* Liste - Daumenfreundliche Abstände */}
         <section className="space-y-3">
           <div className="flex justify-between items-end pb-2 border-b border-gray-200">
             <h2 className="text-lg font-bold text-gray-800">Letzte Protokolle</h2>
