@@ -20,6 +20,7 @@ export default function ProtocolsPage() {
   const router = useRouter();
 
   const ORG_ID = "4bab2241-2309-435c-a003-455ad4a5b1dc";
+  const ADMIN_EMAIL = "julianvollmer@live.de";
 
   useEffect(() => {
     const checkUser = async () => {
@@ -65,7 +66,9 @@ export default function ProtocolsPage() {
   }
 
   async function handleSeedTemplates() {
+    if (user?.email !== ADMIN_EMAIL) return;
     if (!confirm("Standard-Vorlagen jetzt laden?")) return;
+    
     try {
       await protocolService.seedDefaultTemplates(ORG_ID);
       const tempData = await protocolService.getTemplates(ORG_ID);
@@ -121,132 +124,169 @@ export default function ProtocolsPage() {
     }
   }
 
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Prüfe Anmeldung...</div>;
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen font-sans">Prüfe Anmeldung...</div>;
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   return (
-    <div className="max-w-3xl mx-auto p-8">
-      {/* Header Bereich */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-4 border-b gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative group shrink-0">
-            <label className="cursor-pointer">
+    <div className="min-h-screen bg-gray-50 font-sans">
+      {/* Sticky Header für Mobile & Desktop */}
+      <header className="sticky top-0 z-10 bg-white border-b shadow-sm">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <label className="relative cursor-pointer shrink-0 group">
               {avatarUrl ? (
-                <img src={avatarUrl} className="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-200" alt="Avatar" />
+                <img src={avatarUrl} className="w-10 h-10 rounded-full object-cover border border-gray-200" alt="Avatar" />
               ) : (
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                   {user?.email?.charAt(0).toUpperCase()}
                 </div>
               )}
               <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-              <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white transition-opacity">
+              <div className="absolute inset-0 bg-black bg-opacity-20 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] text-white transition-opacity">
                 Edit
               </div>
             </label>
+            <div className="hidden sm:block">
+              <p className="text-[10px] text-gray-400 uppercase font-bold leading-none tracking-tight">Angemeldet</p>
+              <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">{user?.email}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold leading-none">Angemeldet als</p>
-            <p className="font-medium text-gray-900">{user?.email}</p>
+
+          <div className="flex items-center gap-2">
+             <Link 
+              href="/templates" 
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors"
+            >
+              <span className="text-lg sm:text-base">⚙️</span>
+              <span className="hidden sm:inline">Vorlagen verwalten</span>
+            </Link>
+            
+            <div className="flex flex-col items-end">
+              <button onClick={handleLogout} className="p-2 text-red-600 hover:bg-red-50 rounded-lg sm:px-4 sm:py-2 sm:text-sm sm:font-medium transition-colors">
+                Ausloggen
+              </button>
+              {/* "Vorlagen laden" Button - Nur für Admin sichtbar */}
+              <button 
+                onClick={handleSeedTemplates} 
+                disabled={!isAdmin}
+                className={`text-[9px] px-2 underline transition-colors ${
+                  isAdmin ? 'text-gray-400 hover:text-gray-600' : 'hidden'
+                }`}
+              >
+                Vorlagen laden
+              </button>
+            </div>
           </div>
         </div>
+      </header>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Link 
-            href="/templates" 
-            className="text-sm font-semibold text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-lg transition-all shadow-sm"
-          >
-            ⚙️ Vorlagen verwalten
-          </Link>
-          <div className="flex flex-col items-end">
-            <button onClick={handleLogout} className="text-sm font-medium text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors">
-              Abmelden
-            </button>
-            <button onClick={handleSeedTemplates} className="text-[10px] text-gray-400 hover:text-gray-600 px-2 underline">
-              Standards laden
-            </button>
+      <main className="max-w-3xl mx-auto p-4 sm:p-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900 tracking-tight">Protokoll-Manager</h1>
+
+        {/* Formular - Optimiert für Touch (größere Inputs & Buttons) */}
+        <section className="mb-8 p-5 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-5">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Projekt / Kunde</label>
+            <input
+              type="text"
+              placeholder="z.B. Müller - PV Anlage"
+              className="w-full p-4 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 text-base text-gray-900 placeholder:text-gray-400 outline-none transition-all"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              disabled={isCreating}
+            />
           </div>
-        </div>
-      </div>
-
-      <h1 className="text-3xl font-bold mb-8 text-gray-900">Protokoll-Manager</h1>
-
-      {/* Formular */}
-      <form onSubmit={handleCreate} className="mb-10 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-sm space-y-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-gray-700">Projekt- / Kundenname</label>
-          <input
-            type="text"
-            placeholder="z.B. Müller - Wallbox"
-            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            disabled={isCreating}
-          />
-        </div>
-        
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-gray-700">Vorlage auswählen (optional)</label>
-          <select 
-            className="w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 cursor-pointer"
-            value={selectedTemplate}
-            onChange={(e) => setSelectedTemplate(e.target.value)}
-          >
-            <option value="">-- Leeres Protokoll --</option>
-            {templates.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-sm disabled:bg-gray-400"
-          disabled={isCreating || !newTitle.trim()}
-        >
-          {isCreating ? 'Wird erstellt...' : 'Protokoll erstellen'}
-        </button>
-      </form>
-
-      {/* Liste */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold border-b pb-2 text-gray-800">Vergangene Protokolle</h2>
-        {loading ? (
-          <p className="text-gray-500 italic">Lade Daten...</p>
-        ) : protocols.length === 0 ? (
-          <p className="text-gray-400 italic text-center py-10">Noch keine Protokolle vorhanden.</p>
-        ) : (
-          protocols.map((p) => (
-            <div key={p.id} className="p-4 bg-white border rounded-lg shadow-sm flex justify-between items-center group hover:border-blue-300 transition-all">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-lg text-gray-900">{p.title}</span>
-                  {p.is_public ? (
-                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-tight">Team</span>
-                  ) : (
-                    <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-tight">Privat</span>
-                  )}
-                </div>
-                <span className="text-sm text-gray-500">
-                  {p.date ? new Date(p.date).toLocaleDateString('de-DE') : 'Kein Datum'}
-                </span>
-              </div>
-              
-              <div className="flex gap-2">
-                {p.user_id === user.id && (
-                  <button onClick={() => handleTogglePublic(p.id, p.is_public)} className="px-3 py-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                    {p.is_public ? '👥' : '🔒'}
-                  </button>
-                )}
-                <button onClick={() => handleDelete(p.id, p.title)} className="px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-                  🗑️
-                </button>
-                <Link href={`/protocol/${p.id}`} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 shadow-sm">
-                  Öffnen
-                </Link>
+          
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vorlage auswählen</label>
+            <div className="relative">
+              <select 
+                className="w-full p-4 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 text-base text-gray-700 appearance-none cursor-pointer outline-none transition-all"
+                value={selectedTemplate}
+                onChange={(e) => setSelectedTemplate(e.target.value)}
+              >
+                <option value="">-- Leeres Protokoll --</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-400">
+                ▼
               </div>
             </div>
-          ))
-        )}
-      </div>
+          </div>
+
+          <button
+            onClick={handleCreate}
+            className="w-full bg-green-600 text-white p-4 rounded-xl font-bold hover:bg-green-700 active:scale-[0.98] transition-all shadow-md disabled:bg-gray-300 disabled:shadow-none"
+            disabled={isCreating || !newTitle.trim()}
+          >
+            {isCreating ? 'Wird erstellt...' : 'Protokoll erstellen'}
+          </button>
+        </section>
+
+        {/* Liste - Daumenfreundliche Abstände */}
+        <section className="space-y-3">
+          <div className="flex justify-between items-end pb-2 border-b border-gray-200">
+            <h2 className="text-lg font-bold text-gray-800">Letzte Protokolle</h2>
+            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+              {protocols.length} Gesamt
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="py-12 flex flex-col items-center gap-3">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm text-gray-400">Lade Daten...</p>
+            </div>
+          ) : protocols.length === 0 ? (
+            <div className="text-center py-16 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+              <p className="text-gray-400 text-sm">Noch keine Protokolle vorhanden.</p>
+            </div>
+          ) : (
+            protocols.map((p) => (
+              <div key={p.id} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm flex items-center justify-between gap-3 active:bg-gray-50 transition-colors group">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-bold text-gray-900 truncate text-base">{p.title}</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter ${p.is_public ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                      {p.is_public ? 'Team' : 'Privat'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 font-medium">
+                    {p.date ? new Date(p.date).toLocaleDateString('de-DE') : 'Kein Datum'}
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  {p.user_id === user.id && (
+                    <button 
+                      onClick={() => handleTogglePublic(p.id, p.is_public)} 
+                      className="p-3 text-lg hover:bg-gray-100 rounded-xl transition-colors"
+                      title={p.is_public ? 'Öffentlich' : 'Privat'}
+                    >
+                      {p.is_public ? '👥' : '🔒'}
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handleDelete(p.id, p.title)} 
+                    className="p-3 text-lg text-red-400 hover:bg-red-50 rounded-xl sm:opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    🗑️
+                  </button>
+                  <Link 
+                    href={`/protocol/${p.id}`} 
+                    className="bg-gray-900 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-sm active:bg-black transition-colors"
+                  >
+                    Öffnen
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+      </main>
     </div>
   );
 }

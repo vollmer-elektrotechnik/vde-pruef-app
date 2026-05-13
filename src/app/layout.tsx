@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Meeting Minutes App",
+  title: "Protokoll-Manager",
   description: "Protocol Management MVP",
 };
 
