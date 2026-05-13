@@ -23,16 +23,12 @@ export const protocolService = {
 
   /**
    * Lädt ein Bild in den Storage hoch und aktualisiert die avatar_url im Profil.
-   * Gibt die neue Public URL als String zurück.
    */
   async updateAvatar(userId: string, file: File): Promise<string> {
     const fileExt = file.name.split('.').pop();
     const cleanFileName = `${Date.now()}.${fileExt}`;
     const filePath = `${userId}/${cleanFileName}`;
 
-    console.log("DEBUG: Starte Upload-Prozess", { userId, filePath });
-
-    // 1. Upload zu Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, { 
@@ -40,28 +36,20 @@ export const protocolService = {
         contentType: file.type 
       });
 
-    if (uploadError) {
-      console.error("Storage Error:", uploadError);
-      throw uploadError;
-    }
+    if (uploadError) throw uploadError;
 
-    // 2. Public URL abrufen
     const { data } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
 
     const publicUrl = data.publicUrl;
 
-    // 3. Spalte 'avatar_url' in der Tabelle 'profiles' aktualisieren
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ avatar_url: publicUrl })
       .eq('id', userId);
 
-    if (updateError) {
-      console.error("Database Update Error:", updateError);
-      throw updateError;
-    }
+    if (updateError) throw updateError;
 
     return publicUrl; 
   },
@@ -107,9 +95,6 @@ export const protocolService = {
     return data;
   },
 
-  /**
-   * AKTUALISIERT DEN STATUS (Wichtig für den PDF-Export & Abschluss)
-   */
   async updateProtocolStatus(protocolId: string, status: 'draft' | 'completed') {
     const { data, error } = await supabase
       .from('protocols')
@@ -118,10 +103,7 @@ export const protocolService = {
       .select()
       .single();
 
-    if (error) {
-      console.error("Fehler beim Status-Update:", error);
-      throw error;
-    }
+    if (error) throw error;
     return data;
   },
 
@@ -252,6 +234,41 @@ export const protocolService = {
     return data;
   },
 
+  /**
+   * Importiert spezifische VDE-Prüfschritte in ein Protokoll
+   */
+  async importVDETemplate(protocolId: string) {
+    const vdeItems = [
+      { title: 'Sichtprüfung (Gehäuse, Leitungen)', type: 'check' },
+      { title: 'Schutzleiterwiderstand (R_PE)', type: 'value' },
+      { title: 'Isolationswiderstand (R_ISO)', type: 'value' },
+      { title: 'Schutzleiterstrom / Berührungsstrom', type: 'value' },
+      { title: 'Funktionsprüfung', type: 'check' },
+      { title: 'Gesamtbewertung / Plakette erteilt', type: 'info' }
+    ];
+
+    const { data: items } = await supabase
+      .from('protocol_items')
+      .select('order_index')
+      .eq('protocol_id', protocolId)
+      .order('order_index', { ascending: false })
+      .limit(1);
+
+    let currentIndex = items && items.length > 0 ? items[0].order_index + 1 : 0;
+
+    const itemsToInsert = vdeItems.map((item) => ({
+      protocol_id: protocolId,
+      title: item.title,
+      type: item.type,
+      is_completed: false,
+      content: '',
+      order_index: currentIndex++
+    }));
+
+    const { error } = await supabase.from('protocol_items').insert(itemsToInsert);
+    if (error) throw error;
+  },
+
   async updateItemStatus(itemId: string, isCompleted: boolean) {
     const { error } = await supabase.from('protocol_items').update({ is_completed: isCompleted }).eq('id', itemId);
     if (error) throw error;
@@ -262,9 +279,6 @@ export const protocolService = {
     if (error) throw error;
   },
 
-  /**
-   * AKTUALISIERT DIE REIHENFOLGE (Neu hinzugefügt für Drag & Drop)
-   */
   async updateItemOrder(updates: { id: string, order_index: number }[]) {
     const promises = updates.map(update => 
       supabase
