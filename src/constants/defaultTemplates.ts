@@ -21,24 +21,18 @@ export const AJV_DEFAULT_TEMPLATES: DefaultTemplate[] = [
     ]
   },
   {
-    name: 'Herd anschließen',
+    name: 'Übergabe - SL',
     items: [
-      { title: 'Anschlussdose: Zustand prüfen', type: 'visual' },
-      { title: 'Zugentlastung montiert?', type: 'visual' },
-      { title: 'Messung: Spannung L1-L2-L3 (400V)', type: 'measure' },
-      { title: 'Messung: Durchgängigkeit Schutzleiter', type: 'measure' },
-      { title: 'Funktionstest: Alle Platten/Ofen', type: 'function' }
-    ]
-  },
-  {
-    name: 'Wallbox anschließen',
-    items: [
-      { title: 'Sichtprüfung: Montage & Zuleitung', type: 'visual' },
-      { title: 'RCD Typ B vorhanden?', type: 'visual' },
-      { title: 'Messung: Isolationswiderstand', type: 'measure' },
-      { title: 'Messung: Erdungswiderstand', type: 'measure' },
-      { title: 'Simulation: CP/PP Signal', type: 'function' },
-      { title: 'Messung: Auslösezeit RCD (tA)', type: 'measure' }
+      { title: 'Medis für Otto herrichten', type: 'visual' },
+      { title: 'Hygiene-Artikel für Olga', type: 'visual' },
+      { title: 'Schichtplan Sommerpause anpassen', type: 'measure' },
+      { title: 'Weihnachtsfeier vorbereiten', type: 'measure' },
+      { title: 'Medikamente Till', type: 'function' },
+	  { title: 'Peter um 20:00 Uhr aus Einzelbetreuung rauslassen', type: 'visual' },
+      { title: 'Neuzugang Steve - gefährlich', type: 'visual' },
+      { title: 'Neuzugang Julian - noch gefährlicher', type: 'measure' },
+      { title: 'Katze bringt unglück', type: 'measure' },
+      { title: 'Patrick hat Geburtstag - "LinkzuPaypal"', type: 'function' }
     ]
   }
 ];

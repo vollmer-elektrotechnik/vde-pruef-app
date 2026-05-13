@@ -17,39 +17,54 @@ export const protocolService = {
       .eq('id', userId)
       .single();
     
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116: Kein Eintrag vorhanden
+    if (error && error.code !== 'PGRST116') throw error; 
     return data;
   },
 
   /**
    * Lädt ein Bild in den Storage hoch und aktualisiert die avatar_url im Profil.
+   * Gibt die neue Public URL als String zurück.
    */
-	async updateAvatar(userId: string, file: File) {
-	  const fileExt = file.name.split('.').pop();
-	  const cleanFileName = `${Date.now()}.${fileExt}`;
-	  const filePath = `${userId}/${cleanFileName}`;
+  async updateAvatar(userId: string, file: File): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const cleanFileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${cleanFileName}`;
 
-	  // --- HIER DAS LOGGING EINFÜGEN ---
-	  console.log("DEBUG: Starte Upload-Prozess");
-	  console.log("DEBUG: User-ID:", userId);
-	  console.log("DEBUG: Generierter Pfad:", filePath);
-	  console.log("DEBUG: Datei-Typ:", file.type);
-	  // ---------------------------------
+    console.log("DEBUG: Starte Upload-Prozess", { userId, filePath });
 
-	  const { error: uploadError } = await supabase.storage
-		.from('avatars')
-		.upload(filePath, file, { 
-		  upsert: true,
-		  contentType: file.type 
-		});
+    // 1. Upload zu Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { 
+        upsert: true,
+        contentType: file.type 
+      });
 
-	  if (uploadError) {
-		console.error("Storage Error Details:", uploadError);
-		throw uploadError;
-	  }
+    if (uploadError) {
+      console.error("Storage Error:", uploadError);
+      throw uploadError;
+    }
 
-	  // ... restlicher Code (Public URL und Profil-Update)
-	},
+    // 2. Public URL abrufen
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    const publicUrl = data.publicUrl;
+
+    // 3. Spalte 'avatar_url' in der Tabelle 'profiles' aktualisieren
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error("Database Update Error:", updateError);
+      throw updateError;
+    }
+
+    return publicUrl; 
+  },
 
   // --- 2. PROTOKOLL LOGIK (PROJEKTE) ---
 
@@ -89,6 +104,24 @@ export const protocolService = {
       .single();
     
     if (error) throw error;
+    return data;
+  },
+
+  /**
+   * AKTUALISIERT DEN STATUS (Wichtig für den PDF-Export & Abschluss)
+   */
+  async updateProtocolStatus(protocolId: string, status: 'draft' | 'completed') {
+    const { data, error } = await supabase
+      .from('protocols')
+      .update({ status: status })
+      .eq('id', protocolId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Fehler beim Status-Update:", error);
+      throw error;
+    }
     return data;
   },
 
