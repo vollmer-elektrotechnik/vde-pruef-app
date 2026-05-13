@@ -97,7 +97,6 @@ export const protocolService = {
    * Erstellt ein neues Protokoll mit Dubletten-Prüfung
    */
   async createProtocol(title: string, organizationId: string, userId: string) {
-    // Dubletten-Prüfung
     const { data: existing } = await supabase
       .from('protocols')
       .select('id')
@@ -223,11 +222,7 @@ export const protocolService = {
     return newTemplate;
   },
 
-  /**
-   * Erstellt ein Protokoll aus einer Vorlage mit Dubletten-Prüfung
-   */
   async createFromTemplate(title: string, orgId: string, userId: string, templateId: string) {
-    // 1. Dubletten-Prüfung (bevor das Protokoll angelegt wird)
     const { data: existing } = await supabase
       .from('protocols')
       .select('id')
@@ -239,10 +234,8 @@ export const protocolService = {
       throw new Error(`Ein Protokoll mit dem Namen "${title}" existiert bereits.`);
     }
 
-    // 2. Neues Basis-Protokoll anlegen (nutzt intern trim())
     const newProtocol = await protocolService.createProtocol(title, orgId, userId);
     
-    // 3. Template-Items laden
     const { data: templateItems, error } = await supabase
       .from('template_items')
       .select('*')
@@ -251,7 +244,6 @@ export const protocolService = {
 
     if (error) throw error;
 
-    // 4. Items in das neue Protokoll kopieren
     if (templateItems && templateItems.length > 0) {
       const itemsToInsert = templateItems.map(item => ({
         protocol_id: newProtocol.id,
@@ -264,6 +256,34 @@ export const protocolService = {
       await supabase.from('protocol_items').insert(itemsToInsert);
     }
     return newProtocol;
+  },
+
+  /**
+   * Importiert eine spezifische VDE-Vorlage direkt in ein bestehendes Protokoll.
+   * Löst den Type-Error im Build-Prozess.
+   */
+  async importVDETemplate(protocolId: string) {
+    const vdeTemplate = AJV_DEFAULT_TEMPLATES.find(t => t.name.includes('VDE'));
+    
+    if (!vdeTemplate) {
+      throw new Error("VDE-Standardvorlage nicht gefunden.");
+    }
+
+    const itemsToInsert = vdeTemplate.items.map((item, idx) => ({
+      protocol_id: protocolId,
+      title: item.title,
+      type: item.type,
+      is_completed: false,
+      content: '',
+      order_index: idx
+    }));
+
+    const { error } = await supabase
+      .from('protocol_items')
+      .insert(itemsToInsert);
+
+    if (error) throw error;
+    return { success: true };
   },
 
   // --- 4. TEMPLATE ITEM LOGIK (EDITOR) ---
