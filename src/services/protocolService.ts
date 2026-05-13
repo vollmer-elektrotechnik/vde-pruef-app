@@ -1,15 +1,62 @@
 import { createClient } from '../lib/supabase/client';
+import { AJV_DEFAULT_TEMPLATES } from '../constants/defaultTemplates';
 
 const supabase = createClient();
 
 export const protocolService = {
   
-  // 1. Alle Protokolle laden: Eigene ODER öffentliche der Firma
+  // --- 1. PROFIL & AVATAR LOGIK ---
+
+  /**
+   * Lädt die Profildaten eines Benutzers (z.B. Avatar-URL).
+   */
+  async getProfile(userId: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116: Kein Eintrag vorhanden
+    return data;
+  },
+
+  /**
+   * Lädt ein Bild in den Storage hoch und aktualisiert die avatar_url im Profil.
+   */
+	async updateAvatar(userId: string, file: File) {
+	  const fileExt = file.name.split('.').pop();
+	  const cleanFileName = `${Date.now()}.${fileExt}`;
+	  const filePath = `${userId}/${cleanFileName}`;
+
+	  // --- HIER DAS LOGGING EINFÜGEN ---
+	  console.log("DEBUG: Starte Upload-Prozess");
+	  console.log("DEBUG: User-ID:", userId);
+	  console.log("DEBUG: Generierter Pfad:", filePath);
+	  console.log("DEBUG: Datei-Typ:", file.type);
+	  // ---------------------------------
+
+	  const { error: uploadError } = await supabase.storage
+		.from('avatars')
+		.upload(filePath, file, { 
+		  upsert: true,
+		  contentType: file.type 
+		});
+
+	  if (uploadError) {
+		console.error("Storage Error Details:", uploadError);
+		throw uploadError;
+	  }
+
+	  // ... restlicher Code (Public URL und Profil-Update)
+	},
+
+  // --- 2. PROTOKOLL LOGIK (PROJEKTE) ---
+
   async getAllProtocols(organizationId: string, userId: string) {
     const { data, error } = await supabase
       .from('protocols')
       .select('*')
-      // Die Logik: (Gehört mir) ODER (Gehört zur Firma UND ist öffentlich)
       .or(`user_id.eq.${userId},and(organization_id.eq.${organizationId},is_public.eq.true)`)
       .order('date', { ascending: false });
     
@@ -17,7 +64,6 @@ export const protocolService = {
     return data;
   },
 
-  // 2. Neues Protokoll erstellen (standardmäßig PRIVAT)
   async createProtocol(title: string, organizationId: string, userId: string) {
     const { data, error } = await supabase
       .from('protocols')
@@ -26,7 +72,7 @@ export const protocolService = {
         organization_id: organizationId, 
         user_id: userId,
         status: 'draft',
-        is_public: false, // Initial für niemanden sonst sichtbar
+        is_public: false, 
         date: new Date().toISOString() 
       })
       .select().single();
@@ -35,26 +81,13 @@ export const protocolService = {
     return data;
   },
 
-  // 3. Sichtbarkeit umschalten (Teilen mit dem Team)
-  async togglePublicStatus(protocolId: string, isPublic: boolean) {
-    const { data, error } = await supabase
-      .from('protocols')
-      .update({ is_public: isPublic })
-      .eq('id', protocolId)
-      .select().single();
-    
-    if (error) throw error;
-    return data;
-  },
-
-  // --- Ab hier folgen deine bestehenden Funktionen für die Details ---
-
   async getProtocolDetails(protocolId: string) {
     const { data, error } = await supabase
       .from('protocols')
       .select(`*, protocol_items (*)`)
       .eq('id', protocolId)
       .single();
+    
     if (error) throw error;
     return data;
   },
@@ -66,6 +99,100 @@ export const protocolService = {
       .eq('id', protocolId);
     if (error) throw error;
   },
+
+  async togglePublicStatus(protocolId: string, isPublic: boolean) {
+    const { data, error } = await supabase
+      .from('protocols')
+      .update({ is_public: isPublic })
+      .eq('id', protocolId)
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  // --- 3. VORLAGEN VERWALTUNG (TEMPLATES) ---
+
+  async getTemplates(orgId: string) {
+    const { data, error } = await supabase
+      .from('protocol_templates')
+      .select('*, template_items(*)')
+      .eq('organization_id', orgId)
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  async createEmptyTemplate(name: string, orgId: string) {
+    const { data, error } = await supabase
+      .from('protocol_templates')
+      .insert({ name, organization_id: orgId })
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteTemplate(templateId: string) {
+    const { error } = await supabase
+      .from('protocol_templates')
+      .delete()
+      .eq('id', templateId);
+    if (error) throw error;
+  },
+
+  async cloneTemplate(templateId: string, newName: string, orgId: string) {
+    const { data: oldTemplate, error: loadError } = await supabase
+      .from('protocol_templates')
+      .select('*, template_items(*)')
+      .eq('id', templateId)
+      .single();
+
+    if (loadError || !oldTemplate) throw new Error("Vorlage nicht gefunden");
+
+    const newTemplate = await this.createEmptyTemplate(newName, orgId);
+
+    if (oldTemplate.template_items && oldTemplate.template_items.length > 0) {
+      const newItems = oldTemplate.template_items.map((item: any) => ({
+        template_id: newTemplate.id,
+        title: item.title,
+        type: item.type,
+        order_index: item.order_index
+      }));
+      
+      const { error: itemError } = await supabase
+        .from('template_items')
+        .insert(newItems);
+      
+      if (itemError) throw itemError;
+    }
+    return newTemplate;
+  },
+
+  async createFromTemplate(title: string, orgId: string, userId: string, templateId: string) {
+    const newProtocol = await this.createProtocol(title, orgId, userId);
+    
+    const { data: templateItems, error } = await supabase
+      .from('template_items')
+      .select('*')
+      .eq('template_id', templateId)
+      .order('order_index');
+
+    if (error) throw error;
+
+    if (templateItems && templateItems.length > 0) {
+      const itemsToInsert = templateItems.map(item => ({
+        protocol_id: newProtocol.id,
+        title: item.title,
+        type: item.type,
+        is_completed: false,
+        content: '',
+        order_index: item.order_index
+      }));
+      await supabase.from('protocol_items').insert(itemsToInsert);
+    }
+    return newProtocol;
+  },
+
+  // --- 4. ITEM LOGIK (AKTIVE PRÜFPUNKTE) ---
 
   async addProtocolItem(protocolId: string, title: string, type: string = 'info', content: string = '') {
     const { data: items } = await supabase
@@ -92,43 +219,6 @@ export const protocolService = {
     return data;
   },
 
-  async updateItemOrder(updates: { id: string, order_index: number }[]) {
-    const promises = updates.map(item => 
-      supabase.from('protocol_items').update({ order_index: item.order_index }).eq('id', item.id)
-    );
-    await Promise.all(promises);
-  },
-
-  async importVDETemplate(protocolId: string) {
-    const vdeSteps = [
-      { title: 'Besichtigung: Auswahl der Betriebsmittel (Beschädigung?)', type: 'visual' },
-      { title: 'Besichtigung: Brandschottungen vorhanden?', type: 'visual' },
-      { title: 'Messung: Durchgängigkeit der Schutzleiter (RPE)', type: 'measure' },
-      { title: 'Messung: Isolationswiderstand (RISO)', type: 'measure' },
-      { title: 'Messung: Schleifenimpedanz (ZS)', type: 'measure' },
-      { title: 'Messung: RCD Auslösezeit (tA)', type: 'measure' },
-      { title: 'Funktion: Rechtsdrehfeld an Steckdosen', type: 'function' }
-    ];
-
-    const itemsToInsert = vdeSteps.map((step, index) => ({
-      protocol_id: protocolId,
-      title: step.title,
-      type: step.type,
-      is_completed: false,
-      content: '',
-      order_index: index
-    }));
-
-    const { error } = await supabase.from('protocol_items').insert(itemsToInsert);
-    if (error) throw error;
-  },
-
-  async updateProtocolStatus(id: string, status: 'draft' | 'completed') {
-    const { data, error } = await supabase.from('protocols').update({ status }).eq('id', id).select().single();
-    if (error) throw error;
-    return data;
-  },
-
   async updateItemStatus(itemId: string, isCompleted: boolean) {
     const { error } = await supabase.from('protocol_items').update({ is_completed: isCompleted }).eq('id', itemId);
     if (error) throw error;
@@ -142,5 +232,21 @@ export const protocolService = {
   async deleteProtocolItem(itemId: string) {
     const { error } = await supabase.from('protocol_items').delete().eq('id', itemId);
     if (error) throw error;
+  },
+
+  // --- 5. INITIALISIERUNG (SEED) ---
+
+  async seedDefaultTemplates(orgId: string) {
+    for (const t of AJV_DEFAULT_TEMPLATES) {
+      const { data: temp, error: tErr } = await supabase
+        .from('protocol_templates')
+        .insert({ name: t.name, organization_id: orgId })
+        .select().single();
+      
+      if (!tErr && temp) {
+        const items = t.items.map((it, idx) => ({ ...it, template_id: temp.id, order_index: idx }));
+        await supabase.from('template_items').insert(items);
+      }
+    }
   }
 };
