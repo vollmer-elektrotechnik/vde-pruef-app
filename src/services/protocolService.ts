@@ -32,6 +32,19 @@ export const protocolService = {
     return data;
   },
 
+  /**
+   * Löscht ein komplettes Protokoll inkl. ID-Matching.
+   * Hinweis: Falls in Supabase "Cascade Delete" aktiviert ist, 
+   * werden zugehörige Items automatisch mitgelöscht.
+   */
+  async deleteProtocol(protocolId: string) {
+    const { error } = await supabase
+      .from('protocols')
+      .delete()
+      .eq('id', protocolId);
+    if (error) throw error;
+  },
+
   async addProtocolItem(protocolId: string, title: string, type: string = 'info', content: string = '') {
     // Höchsten Index ermitteln
     const { data: items } = await supabase
