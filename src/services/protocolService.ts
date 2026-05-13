@@ -262,6 +262,22 @@ export const protocolService = {
     if (error) throw error;
   },
 
+  /**
+   * AKTUALISIERT DIE REIHENFOLGE (Neu hinzugefügt für Drag & Drop)
+   */
+  async updateItemOrder(updates: { id: string, order_index: number }[]) {
+    const promises = updates.map(update => 
+      supabase
+        .from('protocol_items')
+        .update({ order_index: update.order_index })
+        .eq('id', update.id)
+    );
+
+    const results = await Promise.all(promises);
+    const firstError = results.find(r => r.error)?.error;
+    if (firstError) throw firstError;
+  },
+
   async deleteProtocolItem(itemId: string) {
     const { error } = await supabase.from('protocol_items').delete().eq('id', itemId);
     if (error) throw error;
