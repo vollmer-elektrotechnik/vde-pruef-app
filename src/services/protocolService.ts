@@ -4,23 +4,50 @@ const supabase = createClient();
 
 export const protocolService = {
   
-  async getAllProtocols() {
+  // 1. Alle Protokolle laden: Eigene ODER öffentliche der Firma
+  async getAllProtocols(organizationId: string, userId: string) {
     const { data, error } = await supabase
       .from('protocols')
       .select('*')
+      // Die Logik: (Gehört mir) ODER (Gehört zur Firma UND ist öffentlich)
+      .or(`user_id.eq.${userId},and(organization_id.eq.${organizationId},is_public.eq.true)`)
       .order('date', { ascending: false });
+    
     if (error) throw error;
     return data;
   },
 
-  async createProtocol(title: string, organizationId: string) {
+  // 2. Neues Protokoll erstellen (standardmäßig PRIVAT)
+  async createProtocol(title: string, organizationId: string, userId: string) {
     const { data, error } = await supabase
       .from('protocols')
-      .insert({ title, organization_id: organizationId, status: 'draft' })
+      .insert({ 
+        title, 
+        organization_id: organizationId, 
+        user_id: userId,
+        status: 'draft',
+        is_public: false, // Initial für niemanden sonst sichtbar
+        date: new Date().toISOString() 
+      })
       .select().single();
+    
     if (error) throw error;
     return data;
   },
+
+  // 3. Sichtbarkeit umschalten (Teilen mit dem Team)
+  async togglePublicStatus(protocolId: string, isPublic: boolean) {
+    const { data, error } = await supabase
+      .from('protocols')
+      .update({ is_public: isPublic })
+      .eq('id', protocolId)
+      .select().single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // --- Ab hier folgen deine bestehenden Funktionen für die Details ---
 
   async getProtocolDetails(protocolId: string) {
     const { data, error } = await supabase
@@ -32,11 +59,6 @@ export const protocolService = {
     return data;
   },
 
-  /**
-   * Löscht ein komplettes Protokoll inkl. ID-Matching.
-   * Hinweis: Falls in Supabase "Cascade Delete" aktiviert ist, 
-   * werden zugehörige Items automatisch mitgelöscht.
-   */
   async deleteProtocol(protocolId: string) {
     const { error } = await supabase
       .from('protocols')
@@ -46,7 +68,6 @@ export const protocolService = {
   },
 
   async addProtocolItem(protocolId: string, title: string, type: string = 'info', content: string = '') {
-    // Höchsten Index ermitteln
     const { data: items } = await supabase
       .from('protocol_items')
       .select('order_index')
@@ -72,7 +93,6 @@ export const protocolService = {
   },
 
   async updateItemOrder(updates: { id: string, order_index: number }[]) {
-    // Einzelne Updates für jede Zeile
     const promises = updates.map(item => 
       supabase.from('protocol_items').update({ order_index: item.order_index }).eq('id', item.id)
     );
