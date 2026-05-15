@@ -34,10 +34,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 // --- Hilfsfunktion für dynamische Kategorie-Details ---
 const getCategoryDetails = (type: string, customCategories: any[]) => {
-  // 1. Prüfen, ob es eine benutzerdefinierte Kategorie ist
   const custom = customCategories.find(c => c.value === type);
-  
-  // 2. Den Basis-Typ bestimmen (entweder vom Custom-Eintrag oder der Typ selbst)
   const baseType = custom ? custom.base_type : type;
 
   switch (baseType) {
@@ -52,6 +49,7 @@ const getCategoryDetails = (type: string, customCategories: any[]) => {
 };
 
 // --- Sortierbare Komponente für Vorlagen-Items ---
+// Hier wurden die Props für das Deployment typisiert
 function SortableTemplateItem({ item, onBlur, onDelete, onTypeChange, customCategories }: any) {
   const {
     attributes,
@@ -78,13 +76,11 @@ function SortableTemplateItem({ item, onBlur, onDelete, onTypeChange, customCate
         isDragging ? 'shadow-lg border-blue-400 z-50 scale-[1.01]' : 'border-gray-200'
       }`}
     >
-      {/* Drag Handle */}
       <div {...attributes} {...listeners} className="cursor-grab text-gray-300 hover:text-gray-600 px-1">
         <GripVertical size={20} />
       </div>
 
       <div className="flex-1 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        {/* Dynamischer Typ-Umschalter */}
         <select
           value={item.type}
           onChange={(e) => onTypeChange(item.id, e.target.value)}
@@ -97,7 +93,8 @@ function SortableTemplateItem({ item, onBlur, onDelete, onTypeChange, customCate
           </optgroup>
           {customCategories.length > 0 && (
             <optgroup label="Eigene Kategorien">
-              {customCategories.map((cat) => (
+              {/* FIX: Expliziter Typ für 'cat' hinzugefügt */}
+              {customCategories.map((cat: any) => (
                 <option key={cat.id} value={cat.value}>{cat.name}</option>
               ))}
             </optgroup>
@@ -153,11 +150,8 @@ export default function TemplateEditorPage() {
       const profile = await protocolService.getUserProfile();
       if (profile?.organization_id) {
         setOrgId(profile.organization_id);
-        
-        // Parallel Kategorien und Vorlage laden
         const cats = await protocolService.getCustomCategories(profile.organization_id);
         setCustomCategories(cats);
-        
         if (id) await loadTemplate(profile.organization_id);
       } else {
         router.push('/templates');
@@ -227,9 +221,7 @@ export default function TemplateEditorPage() {
 
   async function handleTypeChange(itemId: string, newType: string) {
     try {
-      // Optmistisches UI Update
       setItems(prev => prev.map(item => item.id === itemId ? { ...item, type: newType } : item));
-      // Service Update
       await protocolService.updateTemplateItem(itemId, { type: newType });
     } catch (err) {
       alert("Fehler beim Ändern des Typs");
@@ -263,7 +255,6 @@ export default function TemplateEditorPage() {
         <p className="text-gray-500 text-sm">Definiere die Standard-Schritte und deren Typ für diesen Protokoll-Typ.</p>
       </div>
 
-      {/* Neuer Schritt Erstellen */}
       <form onSubmit={handleAddItem} className="bg-white border-2 border-blue-50 p-4 rounded-2xl shadow-sm mb-10 space-y-3">
         <div className="flex flex-col sm:flex-row gap-2">
           <input
@@ -285,7 +276,8 @@ export default function TemplateEditorPage() {
             </optgroup>
             {customCategories.length > 0 && (
               <optgroup label="Eigene Kategorien">
-                {customCategories.map((cat) => (
+                {/* FIX: Expliziter Typ für 'cat' hinzugefügt */}
+                {customCategories.map((cat: any) => (
                   <option key={cat.id} value={cat.value}>{cat.name}</option>
                 ))}
               </optgroup>
@@ -302,7 +294,6 @@ export default function TemplateEditorPage() {
         </div>
       </form>
 
-      {/* Liste der Schritte */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           <div className="space-y-2 min-h-[100px]">
