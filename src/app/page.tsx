@@ -1,305 +1,123 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { protocolService } from '../services/protocolService';
-import { createClient } from './../lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
-export default function ProtocolsPage() {
-  const [protocols, setProtocols] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+export default function DashboardPage() {
+  const [stats, setStats] = useState({ open: 0, completed: 0, total: 0 });
+  const [recent, setRecent] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [orgId, setOrgId] = useState<string | null>(null);
-  const [newTitle, setNewTitle] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  
-  const supabase = createClient();
   const router = useRouter();
 
-  const ADMIN_EMAIL = "julianvollmer@live.de";
-
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-      } else {
-        setUser(session.user);
-        await loadUserContext(session.user.id);
-        setAuthLoading(false);
-      }
-    };
-    checkUser();
-  }, [supabase, router]);
-
-  async function loadUserContext(userId: string) {
-    try {
-      const profile = await protocolService.getProfile(userId);
-      if (profile?.organization_id) {
-        setOrgId(profile.organization_id);
-        if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
-        await loadInitialData(profile.organization_id, userId);
-      } else {
-        console.error("Benutzer hat keine zugeordnete Organisation.");
+    async function loadDashboardData() {
+      try {
+        // 1. Zuerst das Profil laden, um organization_id und user_id zu erhalten
+        const profile = await protocolService.getUserProfile();
+        
+        if (profile && profile.organization_id) {
+          // 2. Die korrekte Funktion aus deinem Service aufrufen
+          const data = await protocolService.getAllProtocols(profile.organization_id, profile.id);
+          
+          if (data && Array.isArray(data)) {
+            setStats({
+              open: data.filter((p: any) => p.status !== 'completed').length,
+              completed: data.filter((p: any) => p.status === 'completed').length,
+              total: data.length
+            });
+            setRecent(data.slice(0, 5));
+          }
+        }
+      } catch (err) {
+        console.error("Dashboard Load Error:", err);
+      } finally {
         setLoading(false);
       }
-    } catch (err) {
-      console.error("Fehler beim Laden des Benutzerkontexts:", err);
-      setLoading(false);
     }
-  }
+    loadDashboardData();
+  }, []);
 
-  async function loadInitialData(organizationId: string, userId: string) {
-    setLoading(true);
-    try {
-      const [protoData, tempData] = await Promise.all([
-        protocolService.getAllProtocols(organizationId, userId), 
-        protocolService.getTemplates(organizationId)
-      ]);
-      setProtocols(protoData || []);
-      setTemplates(tempData || []);
-    } catch (err: any) {
-      console.error("Fehler beim Laden der Listen:", err.message || err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!e.target.files || !user) return;
-    const file = e.target.files[0];
-    try {
-      const newUrl = await protocolService.updateAvatar(user.id, file);
-      setAvatarUrl(newUrl);
-    } catch (err) {
-      alert("Upload fehlgeschlagen");
-    }
-  }
-
-  async function handleSeedTemplates() {
-    if (user?.email !== ADMIN_EMAIL || !orgId) return;
-    if (!confirm("Standard-Vorlagen jetzt laden?")) return;
-    
-    try {
-      await protocolService.seedDefaultTemplates(orgId);
-      const tempData = await protocolService.getTemplates(orgId);
-      setTemplates(tempData || []);
-      alert("Vorlagen geladen!");
-    } catch (err) {
-      alert("Fehler beim Laden");
-    }
-  }
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newTitle.trim() || !user || !orgId) return;
-    setIsCreating(true);
-    try {
-      if (selectedTemplate) {
-        await protocolService.createFromTemplate(newTitle, orgId, user.id, selectedTemplate);
-      } else {
-        await protocolService.createProtocol(newTitle, orgId, user.id);
-      }
-      setNewTitle('');
-      setSelectedTemplate('');
-      await loadInitialData(orgId, user.id);
-    } catch (err: any) {
-      // Zeigt die spezifische Fehlermeldung des Services an (z.B. Duplikat-Warnung)
-      alert(err.message || "Fehler beim Erstellen");
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
-  async function handleTogglePublic(id: string, currentStatus: boolean) {
-    if (!orgId || !user) return;
-    try {
-      await protocolService.togglePublicStatus(id, !currentStatus);
-      await loadInitialData(orgId, user.id);
-    } catch (err) {
-      alert("Fehler beim Ändern");
-    }
-  }
-
-  async function handleDelete(id: string, title: string) {
-    if (!confirm(`Protokoll "${title}" löschen?`) || !orgId || !user) return;
-    try {
-      await protocolService.deleteProtocol(id);
-      await loadInitialData(orgId, user.id);
-    } catch (err) {
-      alert("Fehler beim Löschen");
-    }
-  }
-
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen font-sans">Prüfe Anmeldung...</div>;
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  if (loading) return <div className="p-8 text-gray-400">Dashboard wird geladen...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <header className="sticky top-0 z-10 bg-white border-b shadow-sm">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <label className="relative cursor-pointer shrink-0 group">
-              {avatarUrl ? (
-                <img src={avatarUrl} className="w-10 h-10 rounded-full object-cover border border-gray-200" alt="Avatar" />
-              ) : (
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                  {user?.email?.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-              <div className="absolute inset-0 bg-black bg-opacity-20 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] text-white transition-opacity">
-                Edit
-              </div>
-            </label>
-            <div className="hidden sm:block">
-              <p className="text-[10px] text-gray-400 uppercase font-bold leading-none tracking-tight">Angemeldet</p>
-              <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">{user?.email}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-             <Link 
-              href="/templates" 
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors"
-            >
-              <span className="text-lg sm:text-base">⚙️</span>
-              <span className="hidden sm:inline">Vorlagen verwalten</span>
-            </Link>
-            
-            <div className="flex flex-col items-end">
-              <button onClick={handleLogout} className="p-2 text-red-600 hover:bg-red-50 rounded-lg sm:px-4 sm:py-2 sm:text-sm sm:font-medium transition-colors">
-                Ausloggen
-              </button>
-              <button 
-                onClick={handleSeedTemplates} 
-                disabled={!isAdmin}
-                className={`text-[9px] px-2 underline transition-colors ${
-                  isAdmin ? 'text-gray-400 hover:text-gray-600' : 'hidden'
-                }`}
-              >
-                Vorlagen laden
-              </button>
-            </div>
-          </div>
+    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-black mb-8 text-gray-900 tracking-tight">Zentrale</h1>
+      
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
+          <p className="text-orange-600 text-[10px] font-bold uppercase tracking-widest">Offen</p>
+          <p className="text-3xl font-black text-gray-900">{stats.open}</p>
         </div>
-      </header>
+        <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
+          <p className="text-green-600 text-[10px] font-bold uppercase tracking-widest">Erledigt</p>
+          <p className="text-3xl font-black text-gray-900">{stats.completed}</p>
+        </div>
+        <div className="bg-blue-600 p-6 rounded-2xl shadow-lg shadow-blue-100">
+          <p className="text-blue-100 text-[10px] font-bold uppercase tracking-widest">Gesamt</p>
+          <p className="text-3xl font-black text-white">{stats.total}</p>
+        </div>
+      </div>
 
-      <main className="max-w-3xl mx-auto p-4 sm:p-8">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900 tracking-tight">Protokoll-Manager</h1>
-
-        <section className="mb-8 p-5 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-5">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Projekt / Kunde</label>
-            <input
-              type="text"
-              placeholder="z.B. Müller - PV Anlage"
-              className="w-full p-4 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 text-base text-gray-900 placeholder:text-gray-400 outline-none transition-all"
-              value={newTitle}
-              onChange={(e) => setNewTitle(newTitle => e.target.value)}
-              disabled={isCreating}
-            />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Letzte Aktivitäten */}
+        <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="font-bold text-gray-800">Letzte Protokolle</h2>
+            <button 
+              onClick={() => router.push('/protocols')} 
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              ALLE ANSEHEN →
+            </button>
           </div>
           
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vorlage auswählen</label>
-            <div className="relative">
-              <select 
-                className="w-full p-4 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 text-base text-gray-700 appearance-none cursor-pointer outline-none transition-all"
-                value={selectedTemplate}
-                onChange={(e) => setSelectedTemplate(e.target.value)}
-              >
-                <option value="">-- Leeres Protokoll --</option>
-                {templates.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-400">
-                ▼
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleCreate}
-            className="w-full bg-green-600 text-white p-4 rounded-xl font-bold hover:bg-green-700 active:scale-[0.98] transition-all shadow-md disabled:bg-gray-300 disabled:shadow-none"
-            disabled={isCreating || !newTitle.trim()}
-          >
-            {isCreating ? 'Wird erstellt...' : 'Protokoll erstellen'}
-          </button>
-        </section>
-
-        <section className="space-y-3">
-          <div className="flex justify-between items-end pb-2 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-800">Letzte Protokolle</h2>
-            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
-              {protocols.length} Gesamt
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="py-12 flex flex-col items-center gap-3">
-              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm text-gray-400">Lade Daten...</p>
-            </div>
-          ) : protocols.length === 0 ? (
-            <div className="text-center py-16 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
-              <p className="text-gray-400 text-sm">Noch keine Protokolle vorhanden.</p>
-            </div>
-          ) : (
-            protocols.map((p) => (
-              <div key={p.id} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm flex items-center justify-between gap-3 active:bg-gray-50 transition-colors group">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-bold text-gray-900 truncate text-base">{p.title}</span>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter ${p.is_public ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
-                      {p.is_public ? 'Team' : 'Privat'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400 font-medium">
-                    {p.date ? new Date(p.date).toLocaleDateString('de-DE') : 'Kein Datum'}
-                  </p>
+          <div className="space-y-3">
+            {recent.length > 0 ? (
+              recent.map(p => (
+                <div 
+                  key={p.id} 
+                  onClick={() => router.push(`/protocol/${p.id}`)} 
+                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-gray-200"
+                >
+                  <span className="text-sm font-bold text-gray-700">{p.title}</span>
+                  <span className={`text-[9px] px-2 py-1 rounded-lg font-black tracking-tighter ${
+                    p.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {p.status === 'completed' ? 'ABGESCHLOSSEN' : 'IN ARBEIT'}
+                  </span>
                 </div>
-                
-                <div className="flex items-center gap-1">
-                  {p.user_id === user.id && (
-                    <button 
-                      onClick={() => handleTogglePublic(p.id, p.is_public)} 
-                      className="p-3 text-lg hover:bg-gray-100 rounded-xl transition-colors"
-                      title={p.is_public ? 'Öffentlich' : 'Privat'}
-                    >
-                      {p.is_public ? '👥' : '🔒'}
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => handleDelete(p.id, p.title)} 
-                    className="p-3 text-lg text-red-400 hover:bg-red-50 rounded-xl sm:opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    🗑️
-                  </button>
-                  <Link 
-                    href={`/protocol/${p.id}`} 
-                    className="bg-gray-900 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-sm active:bg-black transition-colors"
-                  >
-                    Öffnen
-                  </Link>
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      </main>
+              ))
+            ) : (
+              <p className="text-xs text-gray-400 py-4 text-center">Noch keine Protokolle vorhanden.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Schnellstart Panel */}
+        <div className="bg-gray-900 rounded-3xl p-8 text-white flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-bold mb-2">Schnellstart</h2>
+            <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+              Erstellen Sie neue Prüfberichte oder verwalten Sie Ihre firmeneigenen VDE-Vorlagen.
+            </p>
+          </div>
+          <div className="grid gap-3">
+            <button 
+              onClick={() => router.push('/protocols')} 
+              className="bg-white text-black py-4 rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform active:scale-95"
+            >
+              NEUES PROTOKOLL
+            </button>
+            <button 
+              onClick={() => router.push('/templates')} 
+              className="bg-gray-800 text-white py-4 rounded-2xl font-bold text-sm hover:bg-gray-700 transition-colors"
+            >
+              VORLAGEN-EDITOR
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

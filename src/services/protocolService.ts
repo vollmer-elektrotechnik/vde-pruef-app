@@ -7,9 +7,6 @@ export const protocolService = {
   
   // --- 1. PROFIL & AUTH LOGIK ---
 
-  /**
-   * Lädt die Profildaten eines Benutzers (z.B. Avatar-URL).
-   */
   async getProfile(userId: string) {
     const { data, error } = await supabase
       .from('profiles')
@@ -21,29 +18,32 @@ export const protocolService = {
     return data;
   },
 
-  /**
-   * Holt das Profil des aktuell eingeloggten Users inkl. Organisation.
-   */
   async getUserProfile() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return null;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, organization_id')
-      .eq('id', user.id)
-      .single();
+      // Korrektur: select('*') statt eingeschränkter Spaltenwahl, 
+      // damit avatar_url und andere Felder für die UI verfügbar sind.
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (error) {
-      console.error("Profil konnte nicht geladen werden:", error);
+      if (error) {
+        if (error.code !== 'PGRST116') {
+          console.error("Profil konnte nicht geladen werden:", error.message);
+        }
+        return null;
+      }
+      return data;
+    } catch (err) {
+      console.error("Unerwarteter Fehler in getUserProfile:", err);
       return null;
     }
-    return data;
   },
 
-  /**
-   * Lädt ein Bild hoch und aktualisiert die avatar_url im Profil.
-   */
   async updateAvatar(userId: string, file: File): Promise<string> {
     const fileExt = file.name.split('.').pop();
     const cleanFileName = `${Date.now()}.${fileExt}`;
@@ -74,18 +74,46 @@ export const protocolService = {
     return publicUrl; 
   },
 
-  // --- 2. PROTOKOLL LOGIK (GEFILTERTER POOL) ---
+  // --- 2. DYNAMISCHE KATEGORIEN (CUSTOM CATEGORIES) ---
 
-  /**
-   * Holt Protokolle der Organisation, die entweder dem Nutzer gehören 
-   * ODER für das Team (is_public: true) freigegeben wurden.
-   */
+  async getCustomCategories(orgId: string) {
+    const { data, error } = await supabase
+      .from('protocol_categories')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('name', { ascending: true });
+      
+    if (error) throw error;
+    return data || [];
+  },
+
+  async addCustomCategory(orgId: string, name: string, baseType: 'visual' | 'measure' | 'check') {
+    const value = name.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const { data, error } = await supabase
+      .from('protocol_categories')
+      .insert([{ organization_id: orgId, name, value, base_type: baseType }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteCustomCategory(id: string) {
+    const { error } = await supabase
+      .from('protocol_categories')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  // --- 3. PROTOKOLL LOGIK ---
+
   async getAllProtocols(organizationId: string, userId: string) {
     const { data, error } = await supabase
       .from('protocols')
       .select('*')
       .eq('organization_id', organizationId)
-      // Filter: Eigene Protokolle ODER Team-Freigaben
       .or(`user_id.eq.${userId},is_public.eq.true`)
       .order('date', { ascending: false });
     
@@ -93,9 +121,6 @@ export const protocolService = {
     return data;
   },
 
-  /**
-   * Erstellt ein neues Protokoll mit Dubletten-Prüfung
-   */
   async createProtocol(title: string, organizationId: string, userId: string) {
     const { data: existing } = await supabase
       .from('protocols')
@@ -165,7 +190,7 @@ export const protocolService = {
     return data;
   },
 
-  // --- 3. VORLAGEN VERWALTUNG (TEMPLATES) ---
+  // --- 4. VORLAGEN VERWALTUNG (TEMPLATES) ---
 
   async getTemplates(orgId: string) {
     const { data, error } = await supabase
@@ -212,28 +237,13 @@ export const protocolService = {
         type: item.type,
         order_index: item.order_index
       }));
-      
-      const { error: itemError } = await supabase
-        .from('template_items')
-        .insert(newItems);
-      
+      const { error: itemError } = await supabase.from('template_items').insert(newItems);
       if (itemError) throw itemError;
     }
     return newTemplate;
   },
 
   async createFromTemplate(title: string, orgId: string, userId: string, templateId: string) {
-    const { data: existing } = await supabase
-      .from('protocols')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('title', title.trim())
-      .maybeSingle();
-
-    if (existing) {
-      throw new Error(`Ein Protokoll mit dem Namen "${title}" existiert bereits.`);
-    }
-
     const newProtocol = await protocolService.createProtocol(title, orgId, userId);
     
     const { data: templateItems, error } = await supabase
@@ -258,16 +268,9 @@ export const protocolService = {
     return newProtocol;
   },
 
-  /**
-   * Importiert eine spezifische VDE-Vorlage direkt in ein bestehendes Protokoll.
-   * Löst den Type-Error im Build-Prozess.
-   */
   async importVDETemplate(protocolId: string) {
     const vdeTemplate = AJV_DEFAULT_TEMPLATES.find(t => t.name.includes('VDE'));
-    
-    if (!vdeTemplate) {
-      throw new Error("VDE-Standardvorlage nicht gefunden.");
-    }
+    if (!vdeTemplate) throw new Error("VDE-Standardvorlage nicht gefunden.");
 
     const itemsToInsert = vdeTemplate.items.map((item, idx) => ({
       protocol_id: protocolId,
@@ -278,17 +281,14 @@ export const protocolService = {
       order_index: idx
     }));
 
-    const { error } = await supabase
-      .from('protocol_items')
-      .insert(itemsToInsert);
-
+    const { error } = await supabase.from('protocol_items').insert(itemsToInsert);
     if (error) throw error;
     return { success: true };
   },
 
-  // --- 4. TEMPLATE ITEM LOGIK (EDITOR) ---
+  // --- 5. TEMPLATE ITEM LOGIK (EDITOR) ---
 
-  async addTemplateItem(templateId: string, title: string, type: string = 'info') {
+  async addTemplateItem(templateId: string, title: string, type: string = 'visual') {
     const { data: items } = await supabase
       .from('template_items')
       .select('order_index')
@@ -300,23 +300,23 @@ export const protocolService = {
 
     const { data, error } = await supabase
       .from('template_items')
-      .insert({
-        template_id: templateId,
-        title,
-        type,
-        order_index: nextIndex
-      })
+      .insert({ template_id: templateId, title, type, order_index: nextIndex })
       .select().single();
       
     if (error) throw error;
     return data;
   },
 
-  async deleteTemplateItem(itemId: string) {
+  async updateTemplateItem(itemId: string, updates: { title?: string, type?: string }) {
     const { error } = await supabase
       .from('template_items')
-      .delete()
+      .update(updates)
       .eq('id', itemId);
+    if (error) throw error;
+  },
+
+  async deleteTemplateItem(itemId: string) {
+    const { error } = await supabase.from('template_items').delete().eq('id', itemId);
     if (error) throw error;
   },
 
@@ -329,7 +329,7 @@ export const protocolService = {
     if (firstError) throw firstError;
   },
 
-  // --- 5. AKTIVE PROTOKOLL-ITEM LOGIK ---
+  // --- 6. AKTIVE PROTOKOLL-ITEM LOGIK ---
 
   async addProtocolItem(protocolId: string, title: string, type: string = 'info', content: string = '') {
     const { data: items } = await supabase
@@ -368,12 +368,8 @@ export const protocolService = {
 
   async updateItemOrder(updates: { id: string, order_index: number }[]) {
     const promises = updates.map(update => 
-      supabase
-        .from('protocol_items')
-        .update({ order_index: update.order_index })
-        .eq('id', update.id)
+      supabase.from('protocol_items').update({ order_index: update.order_index }).eq('id', update.id)
     );
-
     const results = await Promise.all(promises);
     const firstError = results.find(r => r.error)?.error;
     if (firstError) throw firstError;
@@ -384,7 +380,7 @@ export const protocolService = {
     if (error) throw error;
   },
 
-  // --- 6. INITIALISIERUNG (SEED) ---
+  // --- 7. INITIALISIERUNG (SEED) ---
 
   async seedDefaultTemplates(orgId: string) {
     for (const t of AJV_DEFAULT_TEMPLATES) {
@@ -395,8 +391,9 @@ export const protocolService = {
       
       if (!tErr && temp) {
         const items = t.items.map((it, idx) => ({ 
-            ...it, 
             template_id: temp.id, 
+            title: it.title,
+            type: it.type,
             order_index: idx 
         }));
         await supabase.from('template_items').insert(items);

@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { protocolService } from '../../../services/protocolService';
-import { pdfService } from '../../../services/pdfService'; // PDF Service Import
+import { pdfService } from '../../../services/pdfService'; 
+import { createClient } from '../../../lib/supabase/client';
 
 // DnD Kit Imports
 import {
@@ -23,7 +24,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 // --- Sortierbares Element (Komponente) ---
-function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete }: any) {
+function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete, customCategories }: any) {
   const {
     attributes,
     listeners,
@@ -39,11 +40,28 @@ function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete }: any
     zIndex: isDragging ? 50 : 'auto',
   };
 
+  // --- ÜBERSETZUNGS-LOGIK ---
+  const custom = customCategories.find((c: any) => c.value === item.type);
+  const baseType = custom ? custom.base_type : item.type;
+  
+  // Bestimmt den Anzeigenamen: Eigene Kategorie oder deutsche Übersetzung der Standards
+  const getDisplayLabel = () => {
+    if (custom) return custom.name;
+    switch (item.type) {
+      case 'measure': return 'Messen';
+      case 'visual': return 'Besichtigen';
+      case 'check':
+      case 'function': return 'Erproben';
+      default: return item.type;
+    }
+  };
+
   const getTypeStyle = (type: string) => {
     switch(type) {
-      case 'measure': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'visual': return 'bg-purple-50 text-purple-600 border-purple-100';
-      case 'function': return 'bg-orange-50 text-orange-600 border-orange-100';
+      case 'measure': return 'bg-green-50 text-green-600 border-green-100';
+      case 'visual': return 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'function': 
+      case 'check': return 'bg-orange-50 text-orange-600 border-orange-100';
       default: return 'bg-gray-50 text-gray-600 border-gray-100';
     }
   };
@@ -80,24 +98,25 @@ function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete }: any
         />
       </div>
 
-      {/* 3. Titel & Typ */}
+      {/* 3. Titel & Typ (Bereinigt) */}
       <div className="md:col-span-5">
-        <span className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded border ${getTypeStyle(item.type)}`}>
-          {item.type}
+        <span className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded border ${getTypeStyle(baseType)}`}>
+          {getDisplayLabel()}
         </span>
         <p className={`text-sm font-bold mt-1 ${item.is_completed ? 'text-gray-500' : 'text-gray-900'}`}>
           {item.title}
         </p>
       </div>
 
-      {/* 4. Messwert */}
+      {/* 4. Messwert (Dynamischer Input) */}
       <div className="md:col-span-4">
         <input 
-          type="text"
+          type={baseType === 'measure' ? 'number' : 'text'}
+          step={baseType === 'measure' ? '0.01' : undefined}
           defaultValue={item.content}
           onBlur={(e) => onBlur(item.id, e.target.value)}
           disabled={isLocked}
-          placeholder="Messwert / Ergebnis..."
+          placeholder={baseType === 'measure' ? '0.00' : 'Ergebnis...'}
           className="w-full p-2 text-xs rounded border border-gray-100 bg-gray-50/50 outline-none focus:border-blue-400 focus:bg-white transition-all"
         />
       </div>
@@ -105,7 +124,7 @@ function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete }: any
       {/* 5. Delete */}
       <div className="md:col-span-1 text-right">
         {!isLocked && (
-          <button onClick={() => onDelete(item.id)} className="text-gray-200 hover:text-red-500 transition-colors">🗑️</button>
+          <button onClick={() => onDelete(item.id)} className="text-gray-200 hover:text-red-500 transition-colors p-2">🗑️</button>
         )}
       </div>
     </div>
@@ -116,8 +135,11 @@ function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete }: any
 export default function ProtocolDetail() {
   const params = useParams();
   const router = useRouter();
+  const supabase = createClient();
+  
   const [protocol, setProtocol] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [customCategories, setCustomCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemType, setNewItemType] = useState('measure');
@@ -129,13 +151,28 @@ export default function ProtocolDetail() {
 
   async function loadDetail() {
     try {
-      const data = await protocolService.getProtocolDetails(params.id as string);
-      if (data && data.protocol_items) {
-        // Sortierung nach order_index sicherstellen
-        const sorted = data.protocol_items.sort((a: any, b: any) => a.order_index - b.order_index);
-        setItems(sorted);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
       }
-      setProtocol(data);
+
+      const profile = await protocolService.getUserProfile();
+      if (profile?.organization_id) {
+        // Kategorien und Details parallel laden
+        const [cats, data] = await Promise.all([
+          protocolService.getCustomCategories(profile.organization_id),
+          protocolService.getProtocolDetails(params.id as string)
+        ]);
+
+        setCustomCategories(cats || []);
+        
+        if (data && data.protocol_items) {
+          const sorted = data.protocol_items.sort((a: any, b: any) => a.order_index - b.order_index);
+          setItems(sorted);
+        }
+        setProtocol(data);
+      }
     } catch (err) { 
       console.error("Fehler beim Laden:", err); 
     } finally { 
@@ -145,7 +182,7 @@ export default function ProtocolDetail() {
 
   async function handleDragEnd(event: any) {
     const { active, over } = event;
-    if (active.id !== over.id) {
+    if (active && over && active.id !== over.id) {
       const oldIndex = items.findIndex((i) => i.id === active.id);
       const newIndex = items.findIndex((i) => i.id === over.id);
       const newArray = arrayMove(items, oldIndex, newIndex);
@@ -179,13 +216,13 @@ export default function ProtocolDetail() {
     loadDetail();
   }
 
-  // Die neue Export-Funktion
   const handleExportPDF = () => {
     if (!protocol || items.length === 0) {
       alert("Keine Daten zum Exportieren vorhanden.");
       return;
     }
-    pdfService.generateProtocolPDF(protocol, items);
+    // WICHTIG: customCategories mitgeben, damit Labels im PDF auch Deutsch sind
+    pdfService.generateProtocolPDF(protocol, items, customCategories);
   };
 
   useEffect(() => { 
@@ -204,7 +241,7 @@ export default function ProtocolDetail() {
         <div>
           <button onClick={() => router.push('/')} className="text-blue-600 text-sm font-bold hover:underline mb-2 block">← Zurück</button>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">{protocol.title}</h1>
-          <p className="text-gray-400 text-xs mt-1 uppercase font-bold tracking-widest">VDE Prüfprotokoll Instanz</p>
+          <p className="text-gray-400 text-xs mt-1 uppercase font-bold tracking-widest">VDE Prüfprotokoll</p>
         </div>
         {!isLocked && (
           <button 
@@ -228,9 +265,18 @@ export default function ProtocolDetail() {
                 value={newItemType} 
                 onChange={(e) => setNewItemType(e.target.value)}
               >
-                <option value="measure">📏 MESSUNG</option>
-                <option value="visual">👁️ SICHTPRÜFUNG</option>
-                <option value="function">⚙️ FUNKTION</option>
+                <optgroup label="Standard">
+                  <option value="measure">📏 MESSUNG</option>
+                  <option value="visual">👁️ SICHTPRÜFUNG</option>
+                  <option value="function">⚙️ FUNKTION</option>
+                </optgroup>
+                {customCategories.length > 0 && (
+                  <optgroup label="Eigene Kategorien">
+                    {customCategories.map((cat) => (
+                      <option key={cat.id} value={cat.value}>{cat.name}</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               <input 
                 type="text" 
@@ -255,6 +301,7 @@ export default function ProtocolDetail() {
                     item={item} 
                     index={index} 
                     isLocked={isLocked}
+                    customCategories={customCategories}
                     onToggle={toggleItem}
                     onBlur={handleContentBlur}
                     onDelete={handleDeleteItem}
