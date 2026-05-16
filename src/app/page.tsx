@@ -64,12 +64,13 @@ export default function DashboardPage() {
         <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-bold text-gray-800">Letzte Protokolle</h2>
-            {/* HIER GEÄNDERT: Text umbenannt und 'cursor-pointer' hinzugefügt */}
+            {/* HIER GEÄNDERT: Text passt sich jetzt responsiv der Bildschirmgröße an */}
             <button 
               onClick={() => router.push('/protocols')} 
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer whitespace-nowrap"
             >
-              ALLE PROTOKOLLE →
+              <span className="hidden sm:inline">ALLE PROTOKOLLE →</span>
+              <span className="inline sm:hidden">ALLE →</span>
             </button>
           </div>
           
