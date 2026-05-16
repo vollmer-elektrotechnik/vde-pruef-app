@@ -239,7 +239,8 @@ export default function ProtocolDetail() {
       {/* HEADER BEREICH */}
       <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <button onClick={() => router.push('/')} className="text-blue-600 text-sm font-bold hover:underline mb-2 block">← Zurück</button>
+          {/* HIER GEÄNDERT: Verweist nun auf die korrekte Route /protocols */}
+          <button onClick={() => router.push('/protocols')} className="text-blue-600 text-sm font-bold hover:underline mb-2 block">← Zurück</button>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">{protocol.title}</h1>
           <p className="text-gray-400 text-xs mt-1 uppercase font-bold tracking-widest">VDE Prüfprotokoll</p>
         </div>

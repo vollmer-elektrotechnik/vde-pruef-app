@@ -64,11 +64,12 @@ export default function DashboardPage() {
         <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-bold text-gray-800">Letzte Protokolle</h2>
+            {/* HIER GEÄNDERT: Text umbenannt und 'cursor-pointer' hinzugefügt */}
             <button 
               onClick={() => router.push('/protocols')} 
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
             >
-              ALLE ANSEHEN →
+              ALLE PROTOKOLLE →
             </button>
           </div>
           
@@ -106,13 +107,13 @@ export default function DashboardPage() {
           <div className="grid gap-3">
             <button 
               onClick={() => router.push('/protocols')} 
-              className="bg-white text-black py-4 rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform active:scale-95"
+              className="bg-white text-black py-4 rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform active:scale-95 cursor-pointer"
             >
               NEUES PROTOKOLL
             </button>
             <button 
               onClick={() => router.push('/protocols/templates')} 
-              className="bg-gray-800 text-white py-4 rounded-2xl font-bold text-sm hover:bg-gray-700 transition-colors"
+              className="bg-gray-800 text-white py-4 rounded-2xl font-bold text-sm hover:bg-gray-700 transition-colors cursor-pointer"
             >
               VORLAGEN-EDITOR
             </button>

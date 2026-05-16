@@ -145,12 +145,13 @@ export default function ProtocolsPage() {
 
           <div className="flex items-center gap-2">
             {isAdmin && (
+              /* HIER GEÄNDERT: Text angepasst & 'cursor-pointer' hinzugefügt */
               <button 
                 onClick={handleSeedTemplates}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-lg border border-green-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors"
+                className="p-2 text-green-600 hover:bg-green-50 rounded-lg border border-green-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <Download size={18} />
-                <span className="hidden sm:inline">Vorlagen loaden</span>
+                <span className="hidden sm:inline">Vorlagen laden</span>
               </button>
             )}
           </div>
@@ -194,7 +195,7 @@ export default function ProtocolsPage() {
 
           <button
             onClick={handleCreate}
-            className="w-full bg-green-600 text-white p-4 rounded-xl font-bold hover:bg-green-700 active:scale-[0.98] transition-all shadow-md disabled:bg-gray-300 disabled:shadow-none"
+            className="w-full bg-green-600 text-white p-4 rounded-xl font-bold hover:bg-green-700 active:scale-[0.98] transition-all shadow-md disabled:bg-gray-300 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
             disabled={isCreating || !newTitle.trim()}
           >
             {isCreating ? 'Wird erstellt...' : 'Protokoll erstellen'}
@@ -240,7 +241,7 @@ export default function ProtocolsPage() {
                     {p.user_id === user?.id && (
                       <button 
                         onClick={() => handleTogglePublic(p.id, p.is_public)} 
-                        className="p-2 sm:p-3 text-lg hover:bg-gray-100 rounded-xl transition-colors"
+                        className="p-2 sm:p-3 text-lg hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
                         title={p.is_public ? 'Öffentlich' : 'Privat'}
                       >
                         {p.is_public ? '👥' : '🔒'}
@@ -249,7 +250,7 @@ export default function ProtocolsPage() {
                     
                     <button 
                       onClick={() => handleDelete(p.id, p.title)} 
-                      className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                      className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                       title="Löschen"
                     >
                       <Trash2 size={18} />
