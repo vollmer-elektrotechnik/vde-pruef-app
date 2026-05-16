@@ -4,7 +4,7 @@ import "./globals.css";
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { protocolService } from '../services/protocolService';
-import { Sidebar } from './components/Sidebar'; // Sidebar importieren
+import { Sidebar } from './components/Sidebar';
 import { Loader2 } from 'lucide-react';
 
 export default function RootLayout({
@@ -56,7 +56,8 @@ export default function RootLayout({
           <Sidebar />
 
           {/* HAUPTINHALT (RECHTS) */}
-          <main className="flex-1 md:ml-64 w-full">
+          {/* pt-16 verhindert das Überlagern durch die fixe Mobile-Topbar */}
+          <main className="flex-1 md:ml-64 w-full pt-16 md:pt-0">
             <div className="max-w-7xl mx-auto p-4 md:p-8 lg:p-12">
               {children}
             </div>

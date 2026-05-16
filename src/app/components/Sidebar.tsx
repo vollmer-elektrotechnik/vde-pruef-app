@@ -10,7 +10,7 @@ import { ClipboardList, Clock, Home, Settings, User, LogOut, Menu, X } from 'luc
 export const Sidebar = () => {
   const [user, setUser] = useState<any>(null);
   const [companyName, setCompanyName] = useState<string>('Lade Firma...');
-  const [isOpen, setIsOpen] = useState<boolean>(false); // State für mobiles Menü
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -63,7 +63,6 @@ export const Sidebar = () => {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  // Schließt die Sidebar, wenn sich die Route ändert (wichtig für Mobilgeräte)
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
@@ -80,14 +79,11 @@ export const Sidebar = () => {
 
   return (
     <>
-      {/* MOBILE KOPFZEILE (Sichtbar bis md:) */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-800 text-white flex items-center justify-between px-4 z-40 md:hidden shadow-md">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm uppercase">
-            {userInitial}
-          </div>
-          <span className="text-sm font-semibold truncate max-w-[180px]">{companyName}</span>
-        </div>
+      {/* MOBILE KOPFZEILE (Der ungenutzte Kreis wurde entfernt) */}
+      <header className="fixed top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-800 text-white flex items-center justify-between px-6 z-40 md:hidden shadow-md">
+        <span className="text-sm font-bold tracking-wide uppercase text-blue-400 truncate max-w-[200px]">
+          {companyName}
+        </span>
         
         <button 
           onClick={() => setIsOpen(!isOpen)}
@@ -98,10 +94,10 @@ export const Sidebar = () => {
         </button>
       </header>
 
-      {/* BACKGROUND OVERLAY (Schließt Menü bei Klick in den leeren Raum) */}
+      {/* BACKGROUND OVERLAY */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden transition-opacity"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -113,8 +109,7 @@ export const Sidebar = () => {
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0
       `}>
-        {/* Schließen Button innerhalb der Sidebar für mobile User (Optional) */}
-        <div className="p-6 flex items-center justify-between md:block">
+        <div className="p-6">
           <div className="flex items-center justify-between w-full">
             <Link 
               href="/profile" 
@@ -151,7 +146,6 @@ export const Sidebar = () => {
                 <LogOut size={18} />
               </button>
               
-              {/* X-Button auf Mobilgeräten in der Sidebar */}
               <button 
                 onClick={() => setIsOpen(false)} 
                 className="p-2 text-slate-400 hover:text-white rounded-lg md:hidden"
