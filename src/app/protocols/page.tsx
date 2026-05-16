@@ -5,7 +5,8 @@ import { protocolService } from '../../services/protocolService';
 import { createClient } from '../../lib/supabase/client';        
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Settings, Download, Trash2 } from 'lucide-react';
+// HIER ERGÄNZT: ExternalLink Icon für den mobilen Button
+import { Settings, Download, Trash2, ExternalLink } from 'lucide-react';
 
 export default function ProtocolsPage() {
   const [protocols, setProtocols] = useState<any[]>([]);
@@ -134,8 +135,6 @@ export default function ProtocolsPage() {
     <div className="min-h-screen bg-gray-50 font-sans">
       <header className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          
-          {/* HIER PLATZIERT: Der Vorlagen-Button steht nun ganz links anstelle des System-Namens */}
           <Link 
             href="/protocols/templates" 
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors"
@@ -151,7 +150,7 @@ export default function ProtocolsPage() {
                 className="p-2 text-green-600 hover:bg-green-50 rounded-lg border border-green-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors"
               >
                 <Download size={18} />
-                <span className="hidden sm:inline">Vorlagen laden</span>
+                <span className="hidden sm:inline">Vorlagen loaden</span>
               </button>
             )}
           </div>
@@ -220,48 +219,57 @@ export default function ProtocolsPage() {
               <p className="text-gray-400 text-sm">Noch keine Protokolle vorhanden.</p>
             </div>
           ) : (
-            protocols.map((p) => (
-              <div key={p.id} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm flex items-center justify-between gap-3 active:bg-gray-50 transition-colors group">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-bold text-gray-900 truncate text-base">{p.title}</span>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter ${p.is_public ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
-                      {p.is_public ? 'Team' : 'Privat'}
-                    </span>
+            <div className="space-y-2">
+              {protocols.map((p) => (
+                <div key={p.id} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm flex items-center justify-between gap-3 active:bg-gray-50 transition-colors group">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-bold text-gray-900 truncate text-base">{p.title}</span>
+                      
+                      {/* GEÄNDERT: hidden sm:inline-block sorgt dafür, dass Team/Privat mobil ausgeblendet wird */}
+                      <span className={`hidden sm:inline-block text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter ${p.is_public ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                        {p.is_public ? 'Team' : 'Privat'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 font-medium">
+                      {p.date ? new Date(p.date).toLocaleDateString('de-DE') : 'Kein Datum'}
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-400 font-medium">
-                    {p.date ? new Date(p.date).toLocaleDateString('de-DE') : 'Kein Datum'}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-1">
-                  {p.user_id === user?.id && (
+                  
+                  <div className="flex items-center gap-1 shrink-0">
+                    {p.user_id === user?.id && (
+                      <button 
+                        onClick={() => handleTogglePublic(p.id, p.is_public)} 
+                        className="p-2 sm:p-3 text-lg hover:bg-gray-100 rounded-xl transition-colors"
+                        title={p.is_public ? 'Öffentlich' : 'Privat'}
+                      >
+                        {p.is_public ? '👥' : '🔒'}
+                      </button>
+                    )}
+                    
                     <button 
-                      onClick={() => handleTogglePublic(p.id, p.is_public)} 
-                      className="p-3 text-lg hover:bg-gray-100 rounded-xl transition-colors"
-                      title={p.is_public ? 'Öffentlich' : 'Privat'}
+                      onClick={() => handleDelete(p.id, p.title)} 
+                      className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                      title="Löschen"
                     >
-                      {p.is_public ? '👥' : '🔒'}
+                      <Trash2 size={18} />
                     </button>
-                  )}
-                  
-                  <button 
-                    onClick={() => handleDelete(p.id, p.title)} 
-                    className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                    title="Löschen"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                  
-                  <Link 
-                    href={`/protocols/protocol/${p.id}`} 
-                    className="ml-2 bg-gray-900 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-sm active:bg-black transition-colors"
-                  >
-                    Öffnen
-                  </Link>
+                    
+                    {/* GEÄNDERT: Button passt sich jetzt an (Icon mobil, Text ab sm-Breakpoint) */}
+                    <Link 
+                      href={`/protocols/protocol/${p.id}`} 
+                      className="ml-1 bg-gray-900 text-white p-3 sm:px-5 sm:py-3 rounded-xl text-sm font-bold shadow-sm active:bg-black transition-all flex items-center justify-center"
+                      title="Protokoll öffnen"
+                    >
+                      <span className="hidden sm:inline">Öffnen</span>
+                      <span className="sm:hidden flex items-center justify-center">
+                        <ExternalLink size={16} />
+                      </span>
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </section>
       </main>
