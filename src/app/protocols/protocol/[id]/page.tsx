@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { protocolService } from '../../../services/protocolService';
-import { pdfService } from '../../../services/pdfService'; 
-import { createClient } from '../../../lib/supabase/client';
+import { protocolService } from '../../../../services/protocolService';
+import { pdfService } from '../../../../services/pdfService'; 
+import { createClient } from '../../../../lib/supabase/client';
 
 // DnD Kit Imports
 import {

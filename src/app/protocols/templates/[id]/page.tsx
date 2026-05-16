@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { protocolService } from '../../../services/protocolService';
-import { createClient } from '../../../lib/supabase/client';
+import { protocolService } from '../../../../services/protocolService';
+import { createClient } from '../../../../lib/supabase/client';
 import Link from 'next/link';
 import { 
   GripVertical, 
@@ -49,7 +49,6 @@ const getCategoryDetails = (type: string, customCategories: any[]) => {
 };
 
 // --- Sortierbare Komponente für Vorlagen-Items ---
-// Hier wurden die Props für das Deployment typisiert
 function SortableTemplateItem({ item, onBlur, onDelete, onTypeChange, customCategories }: any) {
   const {
     attributes,
@@ -93,7 +92,6 @@ function SortableTemplateItem({ item, onBlur, onDelete, onTypeChange, customCate
           </optgroup>
           {customCategories.length > 0 && (
             <optgroup label="Eigene Kategorien">
-              {/* FIX: Expliziter Typ für 'cat' hinzugefügt */}
               {customCategories.map((cat: any) => (
                 <option key={cat.id} value={cat.value}>{cat.name}</option>
               ))}
@@ -154,7 +152,8 @@ export default function TemplateEditorPage() {
         setCustomCategories(cats);
         if (id) await loadTemplate(profile.organization_id);
       } else {
-        router.push('/templates');
+        // PFAD AKTUALISIERT: Fallback auf die neue Vorlagen-Übersicht
+        router.push('/protocols/templates');
       }
     };
     
@@ -168,7 +167,8 @@ export default function TemplateEditorPage() {
       const current = allTemplates.find((t: any) => t.id === id);
       
       if (!current) {
-        router.push('/templates');
+        // PFAD AKTUALISIERT: Zurück zur Übersicht, falls Template ungültig ist
+        router.push('/protocols/templates');
         return;
       }
       
@@ -246,7 +246,8 @@ export default function TemplateEditorPage() {
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-8 font-sans">
       <div className="mb-8">
-        <Link href="/templates" className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-bold transition-colors">
+        {/* PFAD AKTUALISIERT: Link führt nun korrekt nach /protocols/templates */}
+        <Link href="/protocols/templates" className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-bold transition-colors">
           <ArrowLeft size={16} /> Zurück zu den Vorlagen
         </Link>
         <h1 className="text-3xl font-black text-gray-900 mt-4 tracking-tight">
@@ -255,7 +256,7 @@ export default function TemplateEditorPage() {
         <p className="text-gray-500 text-sm">Definiere die Standard-Schritte und deren Typ für diesen Protokoll-Typ.</p>
       </div>
 
-      <form onSubmit={handleAddItem} className="bg-white border-2 border-blue-50 p-4 rounded-2xl shadow-sm mb-10 space-y-3">
+      <form onSubmit={handleAddItem} className="bg-white border-2 border-blue-5 p-4 rounded-2xl shadow-sm mb-10 space-y-3">
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
@@ -276,7 +277,6 @@ export default function TemplateEditorPage() {
             </optgroup>
             {customCategories.length > 0 && (
               <optgroup label="Eigene Kategorien">
-                {/* FIX: Expliziter Typ für 'cat' hinzugefügt */}
                 {customCategories.map((cat: any) => (
                   <option key={cat.id} value={cat.value}>{cat.name}</option>
                 ))}

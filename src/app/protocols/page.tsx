@@ -5,7 +5,7 @@ import { protocolService } from '../../services/protocolService';
 import { createClient } from '../../lib/supabase/client';        
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Settings, Download, Trash2 } from 'lucide-react'; // Trash2 hinzugefügt
+import { Settings, Download, Trash2 } from 'lucide-react';
 
 export default function ProtocolsPage() {
   const [protocols, setProtocols] = useState<any[]>([]);
@@ -83,14 +83,22 @@ export default function ProtocolsPage() {
     if (!newTitle.trim() || !user || !orgId) return;
     setIsCreating(true);
     try {
+      let newProtocol: any;
+      
       if (selectedTemplate) {
-        await protocolService.createFromTemplate(newTitle, orgId, user.id, selectedTemplate);
+        newProtocol = await protocolService.createFromTemplate(newTitle, orgId, user.id, selectedTemplate);
       } else {
-        await protocolService.createProtocol(newTitle, orgId, user.id);
+        newProtocol = await protocolService.createProtocol(newTitle, orgId, user.id);
       }
+      
       setNewTitle('');
       setSelectedTemplate('');
-      await loadInitialData(orgId, user.id);
+      
+      if (newProtocol?.id) {
+        router.push(`/protocols/protocol/${newProtocol.id}`);
+      } else {
+        await loadInitialData(orgId, user.id);
+      }
     } catch (err: any) {
       alert(err.message || "Fehler beim Erstellen");
     } finally {
@@ -127,9 +135,14 @@ export default function ProtocolsPage() {
       <header className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           
-          <div className="text-sm font-bold text-gray-900 tracking-tight uppercase">
-            AJV System
-          </div>
+          {/* HIER PLATZIERT: Der Vorlagen-Button steht nun ganz links anstelle des System-Namens */}
+          <Link 
+            href="/protocols/templates" 
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors"
+          >
+            <Settings size={18} />
+            <span className="hidden sm:inline">Vorlagen verwalten</span>
+          </Link>
 
           <div className="flex items-center gap-2">
             {isAdmin && (
@@ -141,14 +154,6 @@ export default function ProtocolsPage() {
                 <span className="hidden sm:inline">Vorlagen laden</span>
               </button>
             )}
-
-            <Link 
-              href="/templates" 
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-100 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold flex items-center gap-1 transition-colors"
-            >
-              <Settings size={18} />
-              <span className="hidden sm:inline">Vorlagen verwalten</span>
-            </Link>
           </div>
         </div>
       </header>
@@ -229,7 +234,6 @@ export default function ProtocolsPage() {
                   </p>
                 </div>
                 
-                {/* Geänderter Aktions-Bereich für die Buttons */}
                 <div className="flex items-center gap-1">
                   {p.user_id === user?.id && (
                     <button 
@@ -241,7 +245,6 @@ export default function ProtocolsPage() {
                     </button>
                   )}
                   
-                  {/* Neu gestylter Löschen-Button passend zum Template-Design */}
                   <button 
                     onClick={() => handleDelete(p.id, p.title)} 
                     className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
@@ -251,7 +254,7 @@ export default function ProtocolsPage() {
                   </button>
                   
                   <Link 
-                    href={`/protocol/${p.id}`} 
+                    href={`/protocols/protocol/${p.id}`} 
                     className="ml-2 bg-gray-900 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-sm active:bg-black transition-colors"
                   >
                     Öffnen

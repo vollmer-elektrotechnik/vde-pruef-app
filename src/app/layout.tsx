@@ -40,7 +40,7 @@ export default function RootLayout({
         <body className="bg-slate-900 flex items-center justify-center h-screen text-white antialiased">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">AJV System wird initialisiert</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Protokoll-Manager wird initialisiert</p>
           </div>
         </body>
       </html>

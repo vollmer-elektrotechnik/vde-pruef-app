@@ -77,7 +77,8 @@ export default function DashboardPage() {
               recent.map(p => (
                 <div 
                   key={p.id} 
-                  onClick={() => router.push(`/protocol/${p.id}`)} 
+                  /* HIER KORRIGIERT: Routing zielt jetzt exakt auf /protocols/protocol/[id] */
+                  onClick={() => router.push(`/protocols/protocol/${p.id}`)} 
                   className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-gray-200"
                 >
                   <span className="text-sm font-bold text-gray-700">{p.title}</span>
@@ -110,7 +111,7 @@ export default function DashboardPage() {
               NEUES PROTOKOLL
             </button>
             <button 
-              onClick={() => router.push('/templates')} 
+              onClick={() => router.push('/protocols/templates')} 
               className="bg-gray-800 text-white py-4 rounded-2xl font-bold text-sm hover:bg-gray-700 transition-colors"
             >
               VORLAGEN-EDITOR

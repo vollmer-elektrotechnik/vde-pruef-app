@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { protocolService } from '../../services/protocolService';
-import { createClient } from '../../lib/supabase/client';
+import { protocolService } from '../../../services/protocolService';
+import { createClient } from '../../../lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Trash2, Copy, Edit3, ArrowLeft, Plus, Settings2 } from 'lucide-react';
@@ -153,7 +153,8 @@ export default function TemplatesPage() {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
       <div className="mb-8">
-        <Link href="/" className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors">
+        {/* PFAD AKTUALISIERT: Leitet nun sauber zurück zur neuen Protokoll-Übersicht */}
+        <Link href="/protocols" className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors">
           <ArrowLeft size={16} /> Zurück zur Übersicht
         </Link>
         <h1 className="text-3xl font-bold text-gray-900 mt-2 tracking-tight">Vorlagen & Konfiguration</h1>
@@ -196,7 +197,9 @@ export default function TemplatesPage() {
                 <div className="flex items-center gap-1">
                   <button onClick={() => handleClone(t.id, t.name)} className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"><Copy size={18} /></button>
                   <button onClick={() => handleDelete(t.id, t.name)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"><Trash2 size={18} /></button>
-                  <Link href={`/templates/${t.id}`} className="ml-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-black transition-all">Bearbeiten</Link>
+                  
+                  {/* PFAD AKTUALISIERT: Verlinkt nun auf das verschobene Einzel-Template */}
+                  <Link href={`/protocols/templates/${t.id}`} className="ml-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-black transition-all">Bearbeiten</Link>
                 </div>
               </div>
             ))}
