@@ -153,7 +153,6 @@ export default function TemplatesPage() {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
       <div className="mb-8">
-        {/* PFAD AKTUALISIERT: Leitet nun sauber zurück zur neuen Protokoll-Übersicht */}
         <Link href="/protocols" className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors">
           <ArrowLeft size={16} /> Zurück zur Übersicht
         </Link>
@@ -165,21 +164,23 @@ export default function TemplatesPage() {
         {/* Linke Spalte: Vorlagen-Verwaltung */}
         <div className="lg:col-span-2 space-y-6">
           <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
               <Edit3 size={18} className="text-blue-600" /> Neue Vorlage
             </h2>
-            <form onSubmit={handleCreateEmpty} className="flex gap-2">
+            
+            {/* GEÄNDERT: Flex-Direction wird nun mobil umgebrochen (flex-col sm:flex-row) */}
+            <form onSubmit={handleCreateEmpty} className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 placeholder="z.B. PV-Check"
-                className="flex-1 p-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 text-sm"
+                className="flex-1 p-3 h-11 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 text-sm w-full"
                 value={newTemplateName}
                 onChange={(e) => setNewTemplateName(e.target.value)}
                 disabled={isProcessing}
               />
               <button 
                 type="submit" 
-                className="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-blue-700 disabled:bg-gray-300 transition-all text-sm"
+                className="bg-blue-600 text-white px-5 h-11 rounded-xl font-bold hover:bg-blue-700 disabled:bg-gray-300 transition-all text-sm w-full sm:w-auto shrink-0 flex items-center justify-center"
                 disabled={!newTemplateName.trim() || isProcessing}
               >
                 {isProcessing ? '...' : 'Anlegen'}
@@ -197,8 +198,6 @@ export default function TemplatesPage() {
                 <div className="flex items-center gap-1">
                   <button onClick={() => handleClone(t.id, t.name)} className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"><Copy size={18} /></button>
                   <button onClick={() => handleDelete(t.id, t.name)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"><Trash2 size={18} /></button>
-                  
-                  {/* PFAD AKTUALISIERT: Verlinkt nun auf das verschobene Einzel-Template */}
                   <Link href={`/protocols/templates/${t.id}`} className="ml-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-black transition-all">Bearbeiten</Link>
                 </div>
               </div>
