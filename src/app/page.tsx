@@ -43,19 +43,19 @@ export default function DashboardPage() {
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <h1 className="text-2xl font-black mb-8 text-gray-900 tracking-tight">Zentrale</h1>
       
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
-          <p className="text-orange-600 text-[10px] font-bold uppercase tracking-widest">Offen</p>
-          <p className="text-3xl font-black text-gray-900">{stats.open}</p>
+      {/* Quick Stats — GEÄNDERT: grid-cols-3 erzwingt eine Zeile auf Mobilgeräten */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+        <div className="bg-white border border-gray-100 p-4 sm:p-6 rounded-2xl shadow-sm">
+          <p className="text-orange-600 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest truncate">Offen</p>
+          <p className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">{stats.open}</p>
         </div>
-        <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
-          <p className="text-green-600 text-[10px] font-bold uppercase tracking-widest">Erledigt</p>
-          <p className="text-3xl font-black text-gray-900">{stats.completed}</p>
+        <div className="bg-white border border-gray-100 p-4 sm:p-6 rounded-2xl shadow-sm">
+          <p className="text-green-600 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest truncate">Erledigt</p>
+          <p className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">{stats.completed}</p>
         </div>
-        <div className="bg-blue-600 p-6 rounded-2xl shadow-lg shadow-blue-100">
-          <p className="text-blue-100 text-[10px] font-bold uppercase tracking-widest">Gesamt</p>
-          <p className="text-3xl font-black text-white">{stats.total}</p>
+        <div className="bg-blue-600 p-4 sm:p-6 rounded-2xl shadow-lg shadow-blue-100">
+          <p className="text-blue-100 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest truncate">Gesamt</p>
+          <p className="text-2xl sm:text-3xl font-black text-white mt-1">{stats.total}</p>
         </div>
       </div>
 
@@ -64,7 +64,6 @@ export default function DashboardPage() {
         <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-bold text-gray-800">Letzte Protokolle</h2>
-            {/* HIER GEÄNDERT: Text passt sich jetzt responsiv der Bildschirmgröße an */}
             <button 
               onClick={() => router.push('/protocols')} 
               className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer whitespace-nowrap"
@@ -79,7 +78,6 @@ export default function DashboardPage() {
               recent.map(p => (
                 <div 
                   key={p.id} 
-                  /* HIER KORRIGIERT: Routing zielt jetzt exakt auf /protocols/protocol/[id] */
                   onClick={() => router.push(`/protocols/protocol/${p.id}`)} 
                   className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-gray-200"
                 >
