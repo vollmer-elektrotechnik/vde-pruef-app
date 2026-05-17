@@ -24,7 +24,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 // --- Sortierbares Element (Komponente) ---
-function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete, customCategories }: any) {
+function SortableItem({ item, index, isLocked, onToggle, onBlur, onCommentBlur, onDelete, customCategories }: any) {
   const {
     attributes,
     listeners,
@@ -70,62 +70,80 @@ function SortableItem({ item, index, isLocked, onToggle, onBlur, onDelete, custo
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-center p-4 rounded-xl border transition-all ${
+      className={`p-4 rounded-xl border transition-all space-y-3 ${
         isDragging ? 'shadow-2xl border-blue-400 bg-blue-50 scale-[1.02] z-50' : 
         item.is_completed ? 'bg-green-50/20 border-green-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'
       }`}
     >
-      {/* 1. Drag & Nummer */}
-      <div className="md:col-span-1 flex items-center gap-2">
-        {!isLocked && (
-          <div {...attributes} {...listeners} className="cursor-grab p-1 text-gray-300 hover:text-gray-500">
-            ⠿
-          </div>
-        )}
-        <span className="text-[10px] font-mono font-black text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-          {(index + 1).toString().padStart(2, '0')}
-        </span>
+      {/* Obere Hauptzeile */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        {/* 1. Drag & Nummer */}
+        <div className="md:col-span-1 flex items-center gap-2">
+          {!isLocked && (
+            <div {...attributes} {...listeners} className="cursor-grab p-1 text-gray-300 hover:text-gray-500">
+              ⠿
+            </div>
+          )}
+          <span className="text-[10px] font-mono font-black text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+            {(index + 1).toString().padStart(2, '0')}
+          </span>
+        </div>
+
+        {/* 2. Checkbox */}
+        <div className="md:col-span-1 flex justify-center">
+          <input 
+            type="checkbox" 
+            checked={item.is_completed} 
+            onChange={() => onToggle(item.id, item.is_completed)}
+            disabled={isLocked}
+            className="w-5 h-5 accent-green-600 rounded cursor-pointer disabled:opacity-50"
+          />
+        </div>
+
+        {/* 3. Titel & Typ */}
+        <div className="md:col-span-5">
+          <span className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded border ${getTypeStyle(baseType)}`}>
+            {getDisplayLabel()}
+          </span>
+          <p className={`text-sm font-bold mt-1 ${item.is_completed ? 'text-gray-500' : 'text-gray-900'}`}>
+            {item.title}
+          </p>
+        </div>
+
+        {/* 4. Messwert / Ergebnis-Input */}
+        <div className="md:col-span-4">
+          <input 
+            type={baseType === 'measure' ? 'number' : 'text'}
+            step={baseType === 'measure' ? '0.01' : undefined}
+            defaultValue={item.content}
+            onBlur={(e) => onBlur(item.id, e.target.value)}
+            disabled={isLocked}
+            placeholder={baseType === 'measure' ? '0.00' : 'Ergebnis...'}
+            className="w-full p-2 text-xs rounded border border-gray-100 bg-gray-50/50 outline-none focus:border-blue-400 focus:bg-white transition-all font-medium text-gray-800"
+          />
+        </div>
+
+        {/* 5. Löschen */}
+        <div className="md:col-span-1 text-right">
+          {!isLocked && (
+            <button onClick={() => onDelete(item.id)} className="text-gray-200 hover:text-red-500 transition-colors p-2 cursor-pointer">🗑️</button>
+          )}
+        </div>
       </div>
 
-      {/* 2. Checkbox */}
-      <div className="md:col-span-1 flex justify-center">
-        <input 
-          type="checkbox" 
-          checked={item.is_completed} 
-          onChange={() => onToggle(item.id, item.is_completed)}
-          disabled={isLocked}
-          className="w-5 h-5 accent-green-600 rounded cursor-pointer disabled:opacity-50"
-        />
-      </div>
-
-      {/* 3. Titel & Typ (Bereinigt) */}
-      <div className="md:col-span-5">
-        <span className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded border ${getTypeStyle(baseType)}`}>
-          {getDisplayLabel()}
-        </span>
-        <p className={`text-sm font-bold mt-1 ${item.is_completed ? 'text-gray-500' : 'text-gray-900'}`}>
-          {item.title}
-        </p>
-      </div>
-
-      {/* 4. Messwert (Dynamischer Input) */}
-      <div className="md:col-span-4">
-        <input 
-          type={baseType === 'measure' ? 'number' : 'text'}
-          step={baseType === 'measure' ? '0.01' : undefined}
-          defaultValue={item.content}
-          onBlur={(e) => onBlur(item.id, e.target.value)}
-          disabled={isLocked}
-          placeholder={baseType === 'measure' ? '0.00' : 'Ergebnis...'}
-          className="w-full p-2 text-xs rounded border border-gray-100 bg-gray-50/50 outline-none focus:border-blue-400 focus:bg-white transition-all"
-        />
-      </div>
-
-      {/* 5. Delete */}
-      <div className="md:col-span-1 text-right">
-        {!isLocked && (
-          <button onClick={() => onDelete(item.id)} className="text-gray-200 hover:text-red-500 transition-colors p-2">🗑️</button>
-        )}
+      {/* Untere Kommentarzeile (Freitext) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center pt-1 border-t border-gray-50">
+        <div className="md:col-start-3 md:col-span-9 flex items-center gap-2">
+          <span className="text-gray-300 text-xs shrink-0" title="Kommentar">💬</span>
+          <input
+            type="text"
+            defaultValue={item.comment || ''}
+            onBlur={(e) => onCommentBlur(item.id, e.target.value)}
+            disabled={isLocked}
+            placeholder="Interner Kommentar oder Bemerkung zu diesem Schritt..."
+            className="w-full p-1.5 text-[11px] bg-transparent text-gray-500 placeholder:text-gray-300 outline-none border-b border-transparent focus:border-gray-200 transition-all"
+          />
+        </div>
       </div>
     </div>
   );
@@ -159,7 +177,6 @@ export default function ProtocolDetail() {
 
       const profile = await protocolService.getUserProfile();
       if (profile?.organization_id) {
-        // Kategorien und Details parallel laden
         const [cats, data] = await Promise.all([
           protocolService.getCustomCategories(profile.organization_id),
           protocolService.getProtocolDetails(params.id as string)
@@ -205,6 +222,11 @@ export default function ProtocolDetail() {
     await protocolService.updateItemContent(itemId, content);
   }
 
+  async function handleCommentBlur(itemId: string, comment: string) {
+    // Ruft die neue Funktion im protocolService auf
+    await protocolService.updateItemComment(itemId, comment);
+  }
+
   async function toggleItem(itemId: string, currentStatus: boolean) {
     await protocolService.updateItemStatus(itemId, !currentStatus);
     loadDetail();
@@ -221,7 +243,6 @@ export default function ProtocolDetail() {
       alert("Keine Daten zum Exportieren vorhanden.");
       return;
     }
-    // WICHTIG: customCategories mitgeben, damit Labels im PDF auch Deutsch sind
     pdfService.generateProtocolPDF(protocol, items, customCategories);
   };
 
@@ -239,15 +260,14 @@ export default function ProtocolDetail() {
       {/* HEADER BEREICH */}
       <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          {/* HIER GEÄNDERT: Verweist nun auf die korrekte Route /protocols */}
-          <button onClick={() => router.push('/protocols')} className="text-blue-600 text-sm font-bold hover:underline mb-2 block">← Zurück</button>
+          <button onClick={() => router.push('/protocols')} className="text-blue-600 text-sm font-bold hover:underline mb-2 block cursor-pointer">← Zurück</button>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">{protocol.title}</h1>
           <p className="text-gray-400 text-xs mt-1 uppercase font-bold tracking-widest">VDE Prüfprotokoll</p>
         </div>
         {!isLocked && (
           <button 
             onClick={async () => { await protocolService.importVDETemplate(protocol.id); loadDetail(); }}
-            className="bg-white border-2 border-blue-600 text-blue-600 px-4 py-2 rounded-xl text-xs font-black hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+            className="bg-white border-2 border-blue-600 text-blue-600 px-4 py-2 rounded-xl text-xs font-black hover:bg-blue-600 hover:text-white transition-all shadow-sm cursor-pointer"
           >
             VDE-VORLAGE LADEN 📑
           </button>
@@ -258,11 +278,11 @@ export default function ProtocolDetail() {
       <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
         <div className="p-6">
           
-          {/* Formular zum Hinzufügen (nur wenn nicht gesperrt) */}
+          {/* Formular zum Hinzufügen */}
           {!isLocked && (
             <form onSubmit={handleAddItem} className="flex flex-wrap gap-2 mb-8 bg-gray-50 p-3 rounded-2xl border border-gray-100">
               <select 
-                className="p-2 border rounded-lg bg-white text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" 
+                className="p-2 border rounded-lg bg-white text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" 
                 value={newItemType} 
                 onChange={(e) => setNewItemType(e.target.value)}
               >
@@ -286,7 +306,7 @@ export default function ProtocolDetail() {
                 value={newItemTitle} 
                 onChange={(e) => setNewItemTitle(e.target.value)}
               />
-              <button type="submit" className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-md">
+              <button type="submit" className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-md cursor-pointer">
                 HINZUFÜGEN
               </button>
             </form>
@@ -305,6 +325,7 @@ export default function ProtocolDetail() {
                     customCategories={customCategories}
                     onToggle={toggleItem}
                     onBlur={handleContentBlur}
+                    onCommentBlur={handleCommentBlur}
                     onDelete={handleDeleteItem}
                   />
                 ))}
@@ -321,12 +342,12 @@ export default function ProtocolDetail() {
         </div>
       </div>
       
-      {/* AKTIONEN BEREICH (UNTEN) */}
+      {/* AKTIONEN BEREICH */}
       <div className="mt-8 flex justify-center flex-col items-center gap-4">
         {!isLocked ? (
           <button 
             onClick={async () => { if(confirm("Prüfung abschließen? Bearbeitung wird gesperrt.")) { await protocolService.updateProtocolStatus(protocol.id, 'completed'); loadDetail(); } }}
-            className="bg-green-600 text-white px-10 py-3 rounded-2xl font-black text-sm hover:bg-green-700 shadow-lg transition-all active:scale-95"
+            className="bg-green-600 text-white px-10 py-3 rounded-2xl font-black text-sm hover:bg-green-700 shadow-lg transition-all active:scale-95 cursor-pointer"
           >
             PRÜFUNG FINALISIEREN & SPERREN 🔒
           </button>
@@ -334,13 +355,13 @@ export default function ProtocolDetail() {
           <div className="flex flex-col md:flex-row gap-4">
             <button 
               onClick={handleExportPDF}
-              className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black text-sm shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2"
+              className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black text-sm shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 cursor-pointer"
             >
               ALS PDF EXPORTIEREN 📄
             </button>
             <button 
               onClick={async () => { if(confirm("Protokoll wieder für Bearbeitung öffnen?")) { await protocolService.updateProtocolStatus(protocol.id, 'draft'); loadDetail(); } }}
-              className="bg-gray-200 text-gray-600 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-gray-300 transition-all"
+              className="bg-gray-200 text-gray-600 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-gray-300 transition-all cursor-pointer"
             >
               ENTSPERREN (ADMIN)
             </button>

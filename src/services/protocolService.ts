@@ -23,8 +23,6 @@ export const protocolService = {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) return null;
 
-      // Korrektur: select('*') statt eingeschränkter Spaltenwahl, 
-      // damit avatar_url und andere Felder für die UI verfügbar sind.
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -363,6 +361,16 @@ export const protocolService = {
 
   async updateItemContent(itemId: string, content: string) {
     const { error } = await supabase.from('protocol_items').update({ content }).eq('id', itemId);
+    if (error) throw error;
+  },
+
+  // Neu implementierte Methode zur Behebung des Runtime-Errors
+  async updateItemComment(itemId: string, comment: string) {
+    const { error } = await supabase
+      .from('protocol_items')
+      .update({ comment: comment })
+      .eq('id', itemId);
+      
     if (error) throw error;
   },
 
