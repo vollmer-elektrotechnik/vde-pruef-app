@@ -42,7 +42,7 @@ export default function WikiPageWithEditor() {
   const [videoAccepted, setVideoAccepted] = useState<Record<string, boolean>>({});
 
   // Admin / Editor States
-  const [isAdmin, setIsAdmin] = useState(false); // Kann später über deine Rollenverteilung gesteuert werden
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -85,6 +85,11 @@ export default function WikiPageWithEditor() {
   useEffect(() => {
     loadWikiArticles();
   }, [supabase]);
+
+  // Funktion zum Akzeptieren der Video-Cookies (DSGVO)
+  const handleAcceptVideo = (id: string) => {
+    setVideoAccepted(prev => ({ ...prev, [id]: true }));
+  };
 
   // Funktion: Bearbeitungsmodus starten
   const startEdit = (artikel: WikiArtikel) => {
@@ -343,7 +348,7 @@ export default function WikiPageWithEditor() {
                   className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-colors disabled:opacity-50"
                 >
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  Änderungen保存
+                  Änderungen speichern
                 </button>
               </div>
             </form>
