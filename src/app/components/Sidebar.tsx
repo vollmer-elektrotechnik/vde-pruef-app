@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase/client';
 import { protocolService } from '../../services/protocolService';
-import { ClipboardList, Clock, Home, Settings, User, LogOut, Menu, X } from 'lucide-react';
+import { ClipboardList, Clock, Home, Settings, User, LogOut, Menu, X, BookOpen } from 'lucide-react'; // BookOpen hinzugefügt
 
 export const Sidebar = () => {
   const [user, setUser] = useState<any>(null);
@@ -15,9 +15,11 @@ export const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
 
+  // "Anleitungen" mit BookOpen-Icon in die Liste eingereiht
   const menuItems = [
     { name: 'Dashboard', icon: <Home size={20} />, href: '/' },
     { name: 'Protokolle', icon: <ClipboardList size={20} />, href: '/protocols' },
+    { name: 'Anleitungen', icon: <BookOpen size={20} />, href: '/wiki' }, // Neu hinzugefügt
     { name: 'Zeiterfassung', icon: <Clock size={20} />, href: '/time-tracking' },
     { name: 'Profil', icon: <User size={20} />, href: '/profile' },
     { name: 'Einstellungen', icon: <Settings size={20} />, href: '/settings' },
@@ -79,7 +81,7 @@ export const Sidebar = () => {
 
   return (
     <>
-      {/* MOBILE KOPFZEILE (Der ungenutzte Kreis wurde entfernt) */}
+      {/* MOBILE KOPFZEILE */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-800 text-white flex items-center justify-between px-6 z-40 md:hidden shadow-md">
         <span className="text-sm font-bold tracking-wide uppercase text-blue-400 truncate max-w-[200px]">
           {companyName}
@@ -163,7 +165,14 @@ export const Sidebar = () => {
             if (item.href === '/') isActive = pathname === '/';
             else if (item.href !== '#') {
               isActive = pathname.startsWith(item.href);
+              
+              // Highlight-Logik für Protokolle & Vorlagen
               if (item.name === 'Protokolle' && (pathname.startsWith('/protocols/') || pathname.startsWith('/templates'))) {
+                isActive = true;
+              }
+              
+              // NEU: Highlight-Logik für Wiki & Wiki-Editor
+              if (item.name === 'Anleitungen' && pathname.startsWith('/wiki')) {
                 isActive = true;
               }
             }
