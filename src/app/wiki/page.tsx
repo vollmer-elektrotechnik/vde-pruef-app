@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { 
   BookOpen, 
-  Youtube, 
+  Video, 
   AlertTriangle, 
   Calendar, 
   CheckCircle2, 
@@ -42,7 +42,7 @@ export default function WikiPageWithEditor() {
   const [videoAccepted, setVideoAccepted] = useState<Record<string, boolean>>({});
 
   // Admin / Editor States
-  const [isAdmin, setIsAdmin] = useState(false); // Kann später über Supabase Auth (Roles) gesteuert werden
+  const [isAdmin, setIsAdmin] = useState(false); // Kann später über deine Rollenverteilung gesteuert werden
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,7 +69,6 @@ export default function WikiPageWithEditor() {
 
       if (data) {
         setArtikelList(data);
-        // Falls kein Artikel ausgewählt ist oder der ausgewählte nicht mehr existiert, nimm den ersten
         if (data.length > 0) {
           setSelectedArtikel(prev => data.find(a => a.id === prev?.id) || data[0]);
         } else {
@@ -113,14 +112,13 @@ export default function WikiPageWithEditor() {
     setIsCreatingNew(true);
   };
 
-  // Funktion: Speichern in Supabase (sowohl Insert als auch Update)
+  // Funktion: Speichern in Supabase
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    // Bei neuen Artikeln generieren wir eine ID aus dem Titel, falls leer
     const finalId = formId.trim() || formTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const heute = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const heute = new Date().toISOString().split('T')[0];
 
     const artikelDaten = {
       id: finalId,
@@ -147,7 +145,6 @@ export default function WikiPageWithEditor() {
 
       setIsEditing(false);
       setIsCreatingNew(false);
-      // Aktualisierte Liste holen
       await loadWikiArticles();
     } catch (err) {
       console.error('Fehler beim Speichern:', err);
@@ -169,7 +166,7 @@ export default function WikiPageWithEditor() {
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-8 font-sans bg-gray-50 min-h-screen">
       
-      {/* HEADER SEKTION MIT ADMIN-TOGGLE (DUMMY FÜR DICH ZUM TESTEN) */}
+      {/* HEADER SEKTION MIT ADMIN-TOGGLE */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
@@ -179,7 +176,6 @@ export default function WikiPageWithEditor() {
           <p className="text-sm text-gray-500 mt-1">Interne Anleitungen, Normen-Updates und Video-Tutorials.</p>
         </div>
         
-        {/* Simulierter Admin-Schalter für dich zum Testen des Editors */}
         <button 
           onClick={() => { setIsAdmin(!isAdmin); setIsEditing(false); setIsCreatingNew(false); }}
           className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${
@@ -256,13 +252,11 @@ export default function WikiPageWithEditor() {
           </div>
         </div>
 
-        {/* RECHTS: Hauptfenster (Entweder Editor ODER Ansicht) */}
+        {/* RECHTS: Hauptfenster (Editor ODER Ansicht) */}
         <div id="wiki-main-view" className="md:col-span-2 bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
           
           {isEditing || isCreatingNew ? (
-            /* ========================================================= */
-            /* FORMULAR: ERSTELLEN / EDITIEREN                           */
-            /* ========================================================= */
+            /* FORMULAR MODUS */
             <form onSubmit={handleSave} className="space-y-4">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -301,7 +295,7 @@ export default function WikiPageWithEditor() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kurzbeschreibung (für die Spalte links)</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kurzbeschreibung</label>
                 <input
                   type="text" required value={formDescription} onChange={e => setFormDescription(e.target.value)}
                   placeholder="Kurzer Teaser-Text für die Übersicht..."
@@ -322,7 +316,7 @@ export default function WikiPageWithEditor() {
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">YouTube Video-ID (Optional)</label>
                   <input
                     type="text" value={formVideoId} onChange={e => setFormVideoId(e.target.value)}
-                    placeholder="z.B. dQw4w9WgXcQ (Wert nach v= )"
+                    placeholder="z.B. dQw4w9WgXcQ"
                     className="w-full text-sm p-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
@@ -332,7 +326,7 @@ export default function WikiPageWithEditor() {
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Inhalt / Anleitung</label>
                 <textarea
                   required rows={8} value={formContent} onChange={e => setFormContent(e.target.value)}
-                  placeholder="Schreibe hier die ausführliche Anleitung. Zeilenumbrüche werden eins zu eins übernommen..."
+                  placeholder="Schreibe hier die ausführliche Anleitung..."
                   className="w-full text-sm p-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
                 />
               </div>
@@ -349,17 +343,13 @@ export default function WikiPageWithEditor() {
                   className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-colors disabled:opacity-50"
                 >
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  Änderungen speichern
+                  Änderungen保存
                 </button>
               </div>
             </form>
           ) : selectedArtikel ? (
-            /* ========================================================= */
-            /* ANSICHTS-MODUS (FÜR DIE NUTZER)                          */
-            /* ========================================================= */
+            /* ANSICHTS MODUS */
             <div className="space-y-6">
-              
-              {/* Titelzeile und Admin-Edit-Button */}
               <div className="flex flex-wrap items-start justify-between gap-2 border-b border-gray-100 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -388,25 +378,22 @@ export default function WikiPageWithEditor() {
                 </div>
               </div>
 
-              {/* VDE Norm falls vorhanden */}
               {selectedArtikel.vde_norm && (
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50/50 w-fit px-2.5 py-1 rounded-md">
                   <CheckCircle2 size={14} /> Ref: {selectedArtikel.vde_norm}
                 </div>
               )}
 
-              {/* TEXT-INHALT (Mit Erhalt der Formatierung aus der Textarea) */}
               <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap bg-white">
                 {selectedArtikel.content}
               </div>
 
-              {/* VIDEO ABSCHNITT */}
               {selectedArtikel.video_id && (
                 <>
                   <hr className="border-gray-200" />
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Youtube size={18} className="text-red-600" />
+                      <Video size={18} className="text-red-600" />
                       <h3 className="text-sm font-bold text-gray-900">Zugehöriges Praxis-Video</h3>
                     </div>
 
@@ -447,7 +434,7 @@ export default function WikiPageWithEditor() {
             </div>
           ) : (
             <div className="text-center py-8 text-gray-400 text-sm">
-              Keine Anleitungen vorhanden. Klicke oben auf „Neu“, um die erste zu erstellen.
+              Keine Anleitungen vorhanden.
             </div>
           )}
         </div>
