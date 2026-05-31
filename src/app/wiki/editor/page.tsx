@@ -10,7 +10,8 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
@@ -24,7 +25,7 @@ interface WikiArtikel {
   video_id: string;
   content: string;
   last_checked: string;
-  status: string; // Hier hinzugefügt
+  status: string; 
 }
 
 export default function WikiEditorPage() {
@@ -40,6 +41,7 @@ export default function WikiEditorPage() {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Form States
   const [formId, setFormId] = useState('');
@@ -101,7 +103,7 @@ export default function WikiEditorPage() {
     setFormVdeNorm('');
     setFormVideoId('');
     setFormContent('');
-    setFormStatus('entwurf'); // Standardmäßig Entwurf
+    setFormStatus('entwurf'); 
     setIsCreatingNew(true);
   };
 
@@ -147,7 +149,6 @@ export default function WikiEditorPage() {
     }
   };
 
-  // Status-Umschalter per Schnellklick außerhalb des Formulars
   const toggleStatus = async (artikel: WikiArtikel, zielStatus: 'entwurf' | 'fertiggestellt') => {
     setStatusUpdating(true);
     try {
@@ -163,6 +164,30 @@ export default function WikiEditorPage() {
       alert('Statusänderung fehlgeschlagen.');
     } finally {
       setStatusUpdating(false);
+    }
+  };
+
+  // Löschfunktion mit Bestätigungs-Sicherheitsnetz
+  const handleDelete = async (artikel: WikiArtikel) => {
+    const konfirmiert = window.confirm(`Möchtest du die Anleitung "${artikel.title}" wirklich unwiderruflich löschen?`);
+    if (!konfirmiert) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('wiki_articles')
+        .delete()
+        .eq('id', artikel.id);
+
+      if (error) throw error;
+      
+      setSelectedArtikel(null);
+      await loadWikiArticles();
+    } catch (err) {
+      console.error(err);
+      alert('Löschen fehlgeschlagen.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -315,11 +340,11 @@ export default function WikiEditorPage() {
                   <h2 className="text-base font-bold text-gray-900 mt-1">{selectedArtikel.title}</h2>
                 </div>
                 
-                {/* STATUS-TOGGLE BUTTONS */}
-                <div className="flex items-center gap-2">
+                {/* AKTIONEN ROW */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                   {selectedArtikel.status === 'fertiggestellt' ? (
                     <button 
-                      disabled={statusUpdating}
+                      disabled={statusUpdating || deleting}
                       onClick={() => toggleStatus(selectedArtikel, 'entwurf')}
                       className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-xl transition-all cursor-pointer"
                     >
@@ -328,7 +353,7 @@ export default function WikiEditorPage() {
                     </button>
                   ) : (
                     <button 
-                      disabled={statusUpdating}
+                      disabled={statusUpdating || deleting}
                       onClick={() => toggleStatus(selectedArtikel, 'fertiggestellt')}
                       className="flex items-center gap-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-2.5 py-1 rounded-xl transition-all shadow-sm cursor-pointer"
                     >
@@ -337,7 +362,24 @@ export default function WikiEditorPage() {
                     </button>
                   )}
 
-                  <button onClick={() => startEdit(selectedArtikel)} className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-xl cursor-pointer"><Edit2 size={12} /> Bearbeiten</button>
+                  <button 
+                    disabled={deleting}
+                    onClick={() => startEdit(selectedArtikel)} 
+                    className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-xl cursor-pointer"
+                  >
+                    <Edit2 size={12} /> Bearbeiten
+                  </button>
+
+                  {/* LÖSCHEN BUTTON */}
+                  <button 
+                    disabled={deleting || statusUpdating}
+                    onClick={() => handleDelete(selectedArtikel)} 
+                    className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-xl cursor-pointer transition-colors"
+                    title="Eintrag löschen"
+                  >
+                    {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} 
+                    Löschen
+                  </button>
                 </div>
               </div>
               {selectedArtikel.vde_norm && <div className="text-xs text-blue-600 bg-blue-50/50 px-2 py-1 rounded w-fit font-medium">Ref: {selectedArtikel.vde_norm}</div>}
