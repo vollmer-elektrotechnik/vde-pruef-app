@@ -113,7 +113,7 @@ export default function TodosPage() {
       <div className="bg-white p-5 rounded-2xl border shadow-sm mb-8 space-y-4">
         <input className="w-full bg-transparent outline-none text-lg font-medium" placeholder="Was muss erledigt werden?" value={newTask} onChange={(e) => setNewTask(e.target.value)} />
         <div className="flex flex-wrap items-center gap-4">
-          <select className="flex-1 bg-gray-50 text-sm p-2 rounded-xl border border-gray-100" onChange={(e) => setSelectedProtocol(e.target.value)}>
+          <select className="w-full sm:w-auto sm:flex-1 bg-gray-50 text-sm p-2 rounded-xl border border-gray-100 truncate" onChange={(e) => setSelectedProtocol(e.target.value)}>
             <option value="">Kein Protokoll verknüpft</option>
             {protocols.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
